@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import .model
+from . import model
 import requests
 import logging
 
@@ -114,11 +114,13 @@ class Connection(object):
     def is_bootstrapped(self):
         """Convenience function for interogating a server to determine whether it's been bootstrapped already."""
         try:
-            a = self.post("/deployment/new")
+            self.post("/deployment/new")
+            return False
         except:
-            raise
+            return True
 
 class AuthorizationHeaderAuthentication(requests.auth.AuthBase):
+    """An authorization header, with bearer token, is included in each HTTP request."""
     def __init__(self, session):
         self.session=session
     def __call__(self, r):

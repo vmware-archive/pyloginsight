@@ -3,16 +3,17 @@
 from setuptools import setup, find_packages
 from pyloginsight import __version__ as pyloginsightversion
 
-with open('requirements.txt') as rfh:
-    install_requires = rfh.read().splitlines()
+
+requires = ['requests', 'ramlfications', 'six', 'jsonschema']
 
 setup(
     name='pyloginsight',
     version=pyloginsightversion,
     url='http://github.com/vmware/pyloginsight/',
-    license='Apache Software License',
+    license='Apache Software License 2.0',
     author='Alan Castonguay',
-    # install_requires=install_requires,
+    install_requires=requires,
+    tests_require=requires,
     description='Log Insight API SDK',
     author_email='acastonguay@vmware.com',
     long_description=open('README.md').read(),
@@ -27,4 +28,9 @@ setup(
         'Operating System :: OS Independent',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
+    entry_points={
+        'console_scripts': [
+            'li = pyloginsight.cli.__main__:main'
+        ]
+    }
 )

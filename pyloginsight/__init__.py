@@ -17,25 +17,11 @@
 # limitations under the License.
 
 
-"""
-from . import utils
-from .models import Request, Response, PreparedRequest
-from .api import request, get, head, post, patch, put, delete, options
-from .sessions import session, Session
-from .status_codes import codes
-from .exceptions import (
-    RequestException, Timeout, URLRequired,
-    TooManyRedirects, HTTPError, ConnectionError,
-    FileModeWarning,
-)
-"""
-
-__title__ = 'requests'
+__title__ = 'pyloginsight'
 __version__ = '2.9.1'
 __build__ = None
 __author__ = 'Alan Castonguay'
-__license__ = 'Apache 2.0'
-__copyright__ = 'Copyright 2015 Kenneth Reitz'
+__license__ = 'Apache Software License 2.0'
 
 # Set default logging handler to avoid "No handler found" warnings.
 import logging

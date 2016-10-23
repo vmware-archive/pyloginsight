@@ -2,7 +2,6 @@
 
 import argparse
 import datetime
-import logging
 import requests
 import json
 import warnings
@@ -16,7 +15,7 @@ class Host(object):
 
     def __init__(self, hoststruct):
         self.hostname = hoststruct.get("hostname", None)
-        self.lastReceived = datetime.datetime.fromtimestamp(hoststruct.get("lastReceived", 0)/1000)
+        self.lastReceived = datetime.datetime.fromtimestamp(hoststruct.get("lastReceived", 0) / 1000)
 
     def __repr__(self):
         return '<Host {0} @ {1}>'.format(self.hostname, self.lastReceived)
@@ -25,10 +24,10 @@ class Host(object):
 def login(args):
     """Login and get a session token"""
     r = requests.post(
-            args.apiroot+'/sessions',
-            verify=False,
-            data=json.dumps({'username': args.username, 'password': args.password, 'provider': 'Local'})
-        )
+        args.apiroot + '/sessions',
+        verify=False,
+        data=json.dumps({'username': args.username, 'password': args.password, 'provider': 'Local'})
+    )
     try:
         args.sessionID = r.json()['sessionId']
     except:
@@ -41,21 +40,21 @@ def hosts(args):
     hosts_from = 1
     while hosts_from >= 0:
         r = requests.post(
-            args.apiroot+'/hosts',
+            args.apiroot + '/hosts',
             verify=False,
             data=json.dumps({'loadMissingHosts': lms, 'from': hosts_from, 'to': hosts_from + request_length - 1}),
-            headers={'Authorization': 'Bearer '+args.sessionID}
+            headers={'Authorization': 'Bearer ' + args.sessionID}
         )
         if 'Warning' in r.headers:
             warnings.warn(r.headers.get('Warning'))
         try:
             p = r.json()
         except:
-            print r.text
+            print(r.text)
             raise
         for hoststruct in p.get('hosts', []):
             yield Host(hoststruct)
-        hosts_from = p.get('to', -2)+1
+        hosts_from = p.get('to', -2) + 1
         if p.get('to', 0) >= p.get('count', 0):
             hosts_from = -1
 
@@ -84,4 +83,4 @@ if __name__ == "__main__":
     args.apiroot = 'https://{server}:{port}/api/v1'.format(server=args.hostname, port=args.port)
     login(args)
     for h in hosts(args):
-        print "{h.hostname}, {h.lastReceived}".format(h=h)
+        print("{h.hostname}, {h.lastReceived}".format(h=h))
