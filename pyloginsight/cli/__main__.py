@@ -3,7 +3,6 @@ import sys
 from ..Connection import Connection
 import argparse
 import logging
-import sys
 
 
 def main():
@@ -33,11 +32,10 @@ def main():
     print(c)
     print(str(c))
     print(repr(c))
-    #c = Connection(args.server, verify=False)
-    #a = c.version()
+    conn = Connection(args.server, verify=False)
 
-    #print(c.is_bootstrapped())
-    # d = Deployment(c, username="foo")
+    print(conn.version())
+
 
 if __name__ == '__main__':
     main()

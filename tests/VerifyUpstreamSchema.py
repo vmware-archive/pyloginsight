@@ -3,14 +3,12 @@
 # Rough and dirty validation of upstream RAML+JsonSchema
 
 from __future__ import print_function
-import python_jsonschema_objects
 import sys
 import logging
 import json
 import os
 import jsonschema
 import traceback
-import ramlfications
 
 
 d = None

@@ -59,6 +59,11 @@ def main(q):
                   },
                   "type": "object"
                 }'''
+
+    builder = python_jsonschema_objects.ObjectBuilder(json.loads(EVENTSSCHEMA))
+    ns = builder.build_classes()
+    print(ns)
+
     SESSIONSCHEMA='''{
                 "$schema": "http://json-schema.org/draft-03/schema",
                 "properties": {
@@ -88,7 +93,6 @@ def main(q):
     print(ns)
     print(dir(ns))
     
-    example = ""
     s = getattr(ns, "Session")()
     print (s)
     print (dir(s))
