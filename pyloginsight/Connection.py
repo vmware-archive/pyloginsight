@@ -26,6 +26,8 @@ def default_user_agent():
 
 class ServerError(RuntimeError):
     pass
+
+
 class Connection(object):
     """Low-level HTTP transport connecting to a remote Log Insight server's API."""
     def __init__(self, server, port=9543, ssl=True, verify=True):
@@ -40,12 +42,11 @@ class Connection(object):
         })
 
 
-
     def __repr__(self):
         return "Connection({0})".format(self._apiroot)
 
     def get_session(self):
-        return 3
+        pass
 
     def connect(self):
         pass
@@ -111,6 +112,7 @@ class Connection(object):
 
     def is_unbootstrapped(self):
         return not self.is_bootstrapped()
+
     def is_bootstrapped(self):
         """Convenience function for interogating a server to determine whether it's been bootstrapped already."""
         try:
