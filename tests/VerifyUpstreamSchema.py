@@ -199,7 +199,7 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler(sys.stderr)
-    formatter = logging.Formatter(u'%(asctime)s %(hostname)s %(name)s[%(process)d] %(levelname)s %(message)s')
+    formatter = logging.Formatter(u'%(asctime)s %(name)s[%(process)d] %(levelname)s %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
