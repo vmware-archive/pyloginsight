@@ -222,13 +222,13 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler(sys.stderr)
-    formatter = logging.Formatter(u'%(asctime)s %(hostname)s %(name)s[%(process)d] %(levelname)s %(message)s')
+    formatter = logging.Formatter(u'%(asctime)s %(name)s[%(process)d] %(levelname)s %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
     try:
         import coloredlogs
-        coloredlogs.install(level='DEBUG')
+        coloredlogs.install(level='DEBUG', fmt=u'%(asctime)s %(name)s[%(process)d] %(levelname)s %(message)s')
     except ImportError:
         pass  # if we don't get colors, that's not a big deal
 
