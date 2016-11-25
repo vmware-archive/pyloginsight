@@ -213,7 +213,7 @@ if __name__ == "__main__":
 
     try:
         import coloredlogs
-        coloredlogs.install(level='DEBUG')
+        coloredlogs.install(level='DEBUG', fmt=u'%(asctime)s %(name)s[%(process)d] %(levelname)s %(message)s')
     except ImportError:
         pass  # if we don't get colors, that's not a big deal
 
