@@ -10,6 +10,12 @@ import sys
 import argparse
 import collections
 
+import python_jsonschema_objects
+
+
+known_schemas = []
+
+
 stats = collections.Counter()
 
 
@@ -95,6 +101,15 @@ def test_example_against_schema(examplestring, schema, verb=None, path=None, ctx
                 if not args.quiet:
                     logging.debug('Valid: {}'.format(context))
                     stats['Valid'] += 1
+                if 'id' not in schema:
+                    schema['id'] = ("{}-{}-{}".format(path, verb, ctx)).replace("/","_")
+
+                if schema['id'] in [x['id'] for x in known_schemas]:
+                    logging.warning("%s already in known_schemas!")
+                known_schemas.append(schema)
+
+
+
                 return True
 
             except jsonschema.exceptions.SchemaError as e:
@@ -168,13 +183,13 @@ def check_resources(resources, name=""):
             for method in resources[resource].methods:
                 m = resources[resource].methods[method]
                 if method != 'get':
-                    check_body(m.body, method, name + resource, supportedResource)
+                    check_body(m.body, method, name + resource)
 
                 for response in m.responses:
                     if str(response) in args.skipresponse:
                         stats['skipresponse'] += 1
                         continue
-                    check_body(m.responses[response].body, method, name + resource, "response " + str(response) + " " + supportedResource)
+                    check_body(m.responses[response].body, method, name + resource, "response-" + str(response))
 
         if resources[resource].resources:
             check_resources(resources[resource].resources, name + resource)
@@ -207,7 +222,7 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler(sys.stderr)
-    formatter = logging.Formatter(u'%(asctime)s %(name)s[%(process)d] %(levelname)s %(message)s')
+    formatter = logging.Formatter(u'%(asctime)s %(hostname)s %(name)s[%(process)d] %(levelname)s %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
@@ -252,4 +267,60 @@ if __name__ == "__main__":
       "workerToken": "0ae94cb9-550a-4c01-85b9-3b7095e92321"
     }"""
 
-    assert(parse_url_response(raml=parsedramlroot, verb='post', route='/deployment/join', status=200, response=example))
+    # commented out as it modifies global state
+    # assert(parse_url_response(raml=parsedramlroot, verb='post', route='/deployment/join', status=200, response=example))
+
+
+    # try to construct individually
+    for splice_schema in known_schemas:
+        logging.warning("Trying to create %s" % splice_schema['id'])
+        o = python_jsonschema_objects.ObjectBuilder(splice_schema)
+        c = o.classes
+        logging.warning("Done create %s" % splice_schema['id'])
+
+    logging.warning("All done!")
+
+    # try to construct mega-schema
+
+    schema={
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "id": "http://vmware.com/go/loginsight/api/raml",
+        "title": "Something",
+        "type": "object",
+        "oneOf": [],
+        "definitions": {}
+    }
+
+    from pprint import pprint
+
+    cnt=0
+    for splice_schema in known_schemas:
+        print("Splicing in %s" % splice_schema['id'])
+        if splice_schema['id'] in schema['definitions']:
+            raise RuntimeError("%s already in schema[definitions]!" % splice_schema['id'], splice_schema)
+            continue
+
+        schema['definitions'][splice_schema['id']] = splice_schema
+        schema['oneOf'].append({
+            "$ref": "#/definitions/%s" % splice_schema['id']
+        })
+
+        if 'definitions' in known_schemas:
+            for d in known_schemas['definitions']:
+                schema['definitions'][splice_schema['id'] + "/" + d] = known_schemas['definitions'][d]
+                
+
+
+        logger.warning("Trying to build with %d definitions! %s" % (len(schema['definitions']), str(schema['definitions'].keys())))
+        o = python_jsonschema_objects.ObjectBuilder(schema)
+        c = o.classes
+
+
+    #with open("render.py", 'w') as f:
+    #    pprint(schema, stream=f)
+
+
+
+
+
+
