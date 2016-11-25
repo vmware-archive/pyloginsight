@@ -7,44 +7,63 @@ import os
 import sys
 
 
+# Where we keep the classes.
+classes = {}
+
+
+# Generate a title (assumed missing for now).
+def get_title(filename):
+    return '_'.join(os.path.basename(filename).split('.')[:-1])
+
+
+# Generate a class name.  python_jsonschema_objects may have a function that
+# does this already.
+def get_class_name(filename):
+   return ''.join([x.title() for x in os.path.basename(filename).split('.')[:-1] if not x.isspace()])
+
+
+
+# Get a class given a filename.
+def get_class(filename):
+    # Load the specified schema file.
+    with open(filename) as f:
+        schema_dict = json.load(f)
+
+    # Modify the schema to include a title.
+    schema_dict['title'] = get_title(filename)
+
+    # Provide ObjectBuilder with the modified dict.
+    builder = pjs.ObjectBuilder(schema_dict)
+
+    # Build the classes.
+    ns = builder.build_classes()
+
+    # Print some information.
+    print("Detected the following classes: {}".format(str(dir(ns))))
+
+    return getattr(ns, get_class_name(filename))
+
+
 # Basic help.
 if len(sys.argv) != 2:
     print('Specify one schema file.')
     sys.exit()
 
 
-# Load the specified schema file.
-with open(sys.argv[1]) as f:
-    schema_dict = json.load(f)
-
-# Generate a title (assumed missing for now).
-title = '_'.join(os.path.basename(sys.argv[1]).split('.')[:-1])
-
-# Generate a class name.  python_jsonschema_objects may have a function that
-# does this already.
-class_name = ''.join([x.title() for x in os.path.basename(sys.argv[1]).split('.')[:-1] if not x.isspace()])
-
-# Modify the schema to include a title.
-schema_dict['title'] = title
-
-# Provide ObjectBuilder with the modified dict.
-builder = pjs.ObjectBuilder(schema_dict)
-
-# Build the classes.
-ns = builder.build_classes()
-
-# Print some information.
-print("Generated title: {}".format(title))
-print("Generated class_name: {}".format(class_name))
-print("Detected the following classes: {}".format(str(dir(ns))))
+if os.path.isdir(sys.argv[1]):
+    print('Directory provided.')
+    files = [os.path.join(sys.argv[1],f) for f in os.listdir(sys.argv[1])]
+    #print('Found files: {}'.format(str(files)))
+    for fn in files:
+        print('Adding {} from {}'.format(get_class_name(fn), fn))
+        classes[get_class_name(fn)] = get_class(fn)
 
 
-# Store the types in a dict using the class_name.
-classes = {}
-classes[class_name] = getattr(ns, class_name)
+if os.path.isfile(sys.argv[1]):
+    print('File provided.')
 
-# Create a variable using class that was detected.
-variable = classes[class_name]()
+    # Store the types in a dict using the class_name.
+    classes[get_class_name(sys.argv[1])] = get_class(sys.argv[1])
 
-# Output the type of the variable.
-print("Created variable of type: {}".format(str(type(variable))))
+
+print(classes)
