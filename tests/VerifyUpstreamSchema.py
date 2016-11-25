@@ -77,6 +77,14 @@ def test_example_against_schema(examplestring, schema, verb=None, path=None, ctx
         if args.no3 and schema['$schema'] == 'http://json-schema.org/draft-03/schema':
             raise Schema03('', context=context)
 
+        if type(schema)==str:
+            schema_string_reason = None
+            try:
+                json.loads(schema)
+            except Exception as e:
+                schema_string_reason = e
+            raise SchemaValidationError("Schema is a string??", context=context, exception=schema_string_reason)
+
         if schema['$schema'] in [
                 'http://json-schema.org/draft-03/schema',
                 'http://json-schema.org/draft-04/schema',
