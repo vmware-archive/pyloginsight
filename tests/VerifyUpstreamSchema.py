@@ -223,9 +223,9 @@ if __name__ == "__main__":
                         help="If the schema/example is Blank or {}, ignore it.")
     parser.add_argument("--no3", action="store_true", default=False,
                         help="Treat JSONSchema Draft 3 as an error.")
-    parser.add_argument("--skipis", action="append",
+    parser.add_argument("--skipis", action="append", default=[],
                         help="ignore any resource which 'is' in this list; e.g., techPreview")
-    parser.add_argument("--skipresponse", action="append",
+    parser.add_argument("--skipresponse", action="append", default=[],
                         help="ignore any resource response in this list; e.g., 404")
     # supported
 
