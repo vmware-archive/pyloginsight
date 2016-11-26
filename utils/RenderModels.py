@@ -297,23 +297,24 @@ if __name__ == "__main__":
     for splice_schema in known_schemas:
         print("Splicing in %s" % splice_schema['id'])
         if splice_schema['id'] in schema['definitions']:
-            raise RuntimeError("%s already in schema[definitions]!" % splice_schema['id'], splice_schema)
+            logger.warning("%s already in schema[definitions]!" % splice_schema['id'], splice_schema)
             continue
-
         schema['definitions'][splice_schema['id']] = splice_schema
         schema['oneOf'].append({
             "$ref": "#/definitions/%s" % splice_schema['id']
         })
 
-        if 'definitions' in known_schemas:
-            for d in known_schemas['definitions']:
-                schema['definitions'][splice_schema['id'] + "/" + d] = known_schemas['definitions'][d]
-                
+        if 'definitions' in splice_schema:
+            # child definitions
+            for d in splice_schema['definitions']:
+                if d in schema['definitions']:
+                    logger.warning("%s already in schema[definitions]!" % splice_schema['id'], splice_schema)
+                schema['definitions'][d] = splice_schema['definitions'][d]
 
 
-        logger.warning("Trying to build with %d definitions! %s" % (len(schema['definitions']), str(schema['definitions'].keys())))
-        o = python_jsonschema_objects.ObjectBuilder(schema)
-        c = o.classes
+    logger.warning("Trying to build with %d definitions! %s" % (len(schema['definitions']), str(schema['definitions'].keys())))
+    o = python_jsonschema_objects.ObjectBuilder(schema)
+    c = o.classes
 
 
     #with open("render.py", 'w') as f:
