@@ -16,15 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 
 __title__ = 'pyloginsight'
-__version__ = '2.9.1'
+__version__ = '0.1'
 __build__ = None
 __author__ = 'Alan Castonguay'
 __license__ = 'Apache Software License 2.0'
 
 # Set default logging handler to avoid "No handler found" warnings.
-import logging
 try:  # Python 2.7+
     from logging import NullHandler
 except ImportError:
@@ -33,4 +33,3 @@ except ImportError:
             pass
 
 logging.getLogger(__name__).addHandler(NullHandler())
-

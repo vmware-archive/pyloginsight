@@ -15,73 +15,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import model
+# from . import model
 import requests
 import logging
 
+
 logger = logging.getLogger(__name__)
+
 
 def default_user_agent():
     return "pyloginsight 0.1"
+
 
 class ServerError(RuntimeError):
     pass
 
 
-class Connection(object):
-    """Low-level HTTP transport connecting to a remote Log Insight server's API."""
-    def __init__(self, server, port=9543, ssl=True, verify=True):
-        self._requestsession = requests.Session()
-        self._verify = verify
-        self._apiroot = '{method}://{server}:{port}/api/v1'.format(method='https' if ssl else 'http', server=server, port=port)
-        self.useragent = default_user_agent()
-        self.session = None
-        self.headers = requests.structures.CaseInsensitiveDict({
-            'User-Agent':self.useragent,
-            'Content-Type':'application/json'
-        })
+class Unauthorized(ServerError):
+    pass
 
+
+class Server(object):
+    """Low-level HTTP transport connecting to a remote Log Insight server's API."""
+
+    def __init__(self, hostname, port=9543, ssl=True, verify=True):
+        self._requestsession = requests.Session()
+        self._hostname = hostname
+        self._port = port
+        self._ssl = ssl
+        self._verify = verify
+
+        self._apiroot = '{method}://{hostname}:{port}/api/v1'.format(method='https' if ssl else 'http',
+                                                                     hostname=hostname, port=port)
+        self.useragent = default_user_agent()
+        self.headers = requests.structures.CaseInsensitiveDict({
+            'User-Agent': self.useragent,
+            'Content-Type': 'application/json'
+        })
+        logging.debug("Connected to {0}".format(self))
 
     def __repr__(self):
-        return "Connection({0})".format(self._apiroot)
+        return "Server({0})".format(repr(self._apiroot))
 
-    def get_session(self):
-        pass
-
-    def connect(self):
-        pass
-
-    def version_object(self):
-        a = self.get("/version", auth=False)
-        o = model.create("Serverversion", a.text)
-        return o
-
+    @property
     def version(self):
-        o = self.version_object()
-        parts = getattr(o, "version").split("-",1)
-        
-        flags = parts[1].split(".")
-        build = flags.pop(0)
-        
-        return "%s %s (build %s)" % (parts[0], o.releaseName, build)
+        """Retrieve version number of remote server"""
+        from distutils.version import StrictVersion
+        # distutils isn't lightweight; don't import it unless needed
 
-    def trymarshaltype(self, clazzlist, o):
-        for t in clazzlist:
-            try:
-                return model.create(t, o)
-            except:
-                pass
-        return None
+        resp = self.get("/version").json()
+
+        # The "version number" contains build-flags (e.g., build number, "TP") after the dash; ignore them
+        # 1.2.3-build.flag.names
+        parts = resp.get("version").split("-", 1)
+        return StrictVersion(parts[0])
 
     def post(self, url, obj=None, auth=True, params=None):
         if obj:
-            obj=obj.serialize()
-        authenticationprovider=None
-        if auth:
-            authenticationprovider=AuthorizationHeaderAuthentication(self.session)
-        r = self._requestsession.post(self._apiroot + url, data=obj, verify=self._verify, auth=authenticationprovider, params=params)
-        
+            obj = obj.serialize()
+        r = self._requestsession.post(self._apiroot + url, data=obj, verify=self._verify, params=params)
+
         if r.status_code != 200:
+            raise NotImplementedError("Implement marshaling of result datatypes")
+            """
             o = self.trymarshaltype(["Serveralreadybootstrapped"], r.text)
             if o:
                 raise ServerError(o)
@@ -92,40 +88,125 @@ class Connection(object):
                 raise ServerError(str(o.as_dict()))
             except:
                 raise
+            """
         return r
 
-    def get(self, url, auth=True, params=None):
-        authenticationprovider=None
-        if auth:
-            authenticationprovider=AuthorizationHeaderAuthentication(self.session)
-        return self._requestsession.get(self._apiroot + url, verify=self._verify, auth=authenticationprovider, params=params)
+    def get(self, url, params=None):
+        return self._requestsession.get(self._apiroot + url, verify=self._verify, params=params)
 
-    def login(self, **kwargs):
-        o = model.get("Createsession")(**kwargs)
-
-        #o.serialize()
-        a = self.post("/sessions", obj=o, auth=False)
-        
-        ro = self.trymarshaltype(["Activesession"], a.text)
-        self.session = ro
-        return ro
-
-    def is_unbootstrapped(self):
-        return not self.is_bootstrapped()
+    def login(self, username, password, provider):
+        return AuthenticatedServer.from_server(server=self,
+                                               auth=AuthorizationHeaderAuthentication(username=username, password=password, provider=provider))
 
     def is_bootstrapped(self):
         """Convenience function for interogating a server to determine whether it's been bootstrapped already."""
+        raise NotImplementedError("TODO: Determine whether the server is already bootstrapped")
         try:
             self.post("/deployment/new")
             return False
         except:
             return True
 
+
 class AuthorizationHeaderAuthentication(requests.auth.AuthBase):
-    """An authorization header, with bearer token, is included in each HTTP request."""
-    def __init__(self, session):
-        self.session=session
+    """An authorization header, with bearer token, is included in each HTTP request.
+    Based on http://docs.python-requests.org/en/master/_modules/requests/auth/"""
+    server = None
+
+    def __init__(self, server, username, password, provider, sessionId=None, reuse_session=None):
+        """If passed an existing sessionId, try to use it."""
+        self.server = server  # Server object, from which we consume apiroot, session, _verify
+        self.username = username
+        self.password = password
+        self.provider = provider
+        self.sessionId = sessionId  # hNhXgAM1xrl...
+        self.requests_session = reuse_session or requests.Session()
+
+    def get_session(self):
+        """Perform a session login and return a live session ID."""
+        if self.username is None or self.password is None:
+            raise RuntimeError("Cannot authenticate without username/password")
+        logging.info("Attempting to authenticate as {0}".format(self.username))
+        # This inner request does not pass auth=self, and it does not recurse.
+        authdict = {"username": self.username, "password": self.password, "provider": self.provider}
+
+        # TODO: This is probably a bad pattern. Reconsider the way it reaches into the Server object.
+        authresponse = self.server._requestsession.post(self.server._apiroot + "/sessions", json=authdict, verify=self.server._verify)
+
+        try:
+            return authresponse.json()['sessionId']
+        except:
+            raise Unauthorized("Authentication failed", authresponse)
+
+    def handle_401(self, r, **kwargs):
+        # method signature matches requests.Request.register_hook
+
+        # Is it possible for a non-401 to end up here?
+        assert r.status_code == 401
+
+        self.sessionId = self.get_session()
+
+        # Now that we have a good session, copy and retry the original request. If it fails again, raise Unauthorized.
+        r.content
+        r.close()
+        prep = r.request.copy()
+        prep.headers.update({"Authorization": "Bearer %s" % self.sessionId})
+        _r = r.connection.send(prep, **kwargs)
+        _r.history.append(r)
+        _r.request = prep
+
+        if _r.status_code == 401:
+            raise Unauthorized("Authentication failed", _r)
+        logging.debug("Authenticated successfully.")
+        return _r
+
     def __call__(self, r):
-        # Implement my authentication
-        r.headers.update({"Authorization": "Bearer %s" % self.session.sessionId})
+        if self.sessionId:
+            # If we already have a Session ID Bearer Token, try to use it.
+            r.headers.update({"Authorization": "Bearer %s" % self.sessionId})
+
+        # TODO: If the TTL has expired, or we have no Bearer token at all, we can reasonably expect this
+        # TODO.cont: request to fail with 401. In both cases, we could avoid a round-trip to the server.
+
+        # Attempt the request. If it fails with a 401, generate a new sessionId
+        r.register_hook('response', self.handle_401)
+        # r.register_hook('response', self.handle_redirect)
         return r
+
+
+class AuthenticatedServer(Server):
+    """Attempts requests to the server which require authentication. If requests fail with HTTP 401 Unauthorized,
+    obtains a session bearer token and retries the request."""
+    _auth = None
+    _server = None
+    bearertoken = None
+
+    def __init__(self, hostname, port=9543, ssl=True, verify=True, auth=None):
+        Server.__init__(self, hostname, port, ssl, verify)
+
+        if auth:
+            auth.server = self
+        self._authprovider = auth
+
+    @classmethod
+    def from_server(cls, server, auth=None):
+        return cls(server._hostname, server._port, server._ssl, server._verify, auth)
+
+    def post(self, url, data=None, params=None):
+        """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
+        r = self._requestsession.post(self._apiroot + url,
+                                      data=data,
+                                      verify=self._verify,
+                                      auth=self._authprovider,
+                                      params=params)
+        return r
+
+    def get(self, url, params=None):
+        return self._requestsession.get(self._apiroot + url,
+                                        verify=self._verify,
+                                        auth=self._authprovider,
+                                        params=params)
+
+
+class AuthenticatedRequest(object):
+    pass

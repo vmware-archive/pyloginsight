@@ -4,9 +4,12 @@ from jsonmodels import models, fields
 import json
 import six
 
+
 class StringField(fields.StringField):
     def __repr__(self):
         return self.__get__(six.string_types)
+
+
 class Cat(models.Base):
 
     name = fields.StringField(required=True)
@@ -23,9 +26,9 @@ class Cat(models.Base):
         )
 
 
-CAT='''{"name":"Sparks", "breed":"Whatever"}'''
+CAT = '''{"name":"Sparks", "breed":"Whatever"}'''
 
-CAT='''{"breed":"Whatever"}'''
+CAT = '''{"breed":"Whatever"}'''
 
 
 def object_hook(dct):

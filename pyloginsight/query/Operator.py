@@ -23,4 +23,3 @@ LT = "<"
 GE = ">="
 LE = "<="
 _NUMERIC = [NOTEQUAL, EQUAL, GT, LT, GE, LE, LAST]
-

@@ -6,6 +6,8 @@ from pyloginsight import __version__ as pyloginsightversion
 
 requires = ['requests', 'ramlfications', 'six', 'jsonschema']
 
+testrequires = requires.extend(["requests_mock"])
+
 setup(
     name='pyloginsight',
     version=pyloginsightversion,
@@ -13,7 +15,7 @@ setup(
     license='Apache Software License 2.0',
     author='Alan Castonguay',
     install_requires=requires,
-    tests_require=requires,
+    tests_require=testrequires,
     description='Log Insight API SDK',
     author_email='acastonguay@vmware.com',
     long_description=open('README.md').read(),

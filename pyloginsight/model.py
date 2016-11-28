@@ -2,6 +2,15 @@ import json
 import python_jsonschema_objects
 import logging
 
+
+def DeclareContainer():
+    pass
+
+
+def DeclareObject():
+    pass
+
+
 def _declare_object(jsonschema, name=None):
     global _container
     _ = json.loads(jsonschema)
@@ -13,7 +22,9 @@ def _declare_object(jsonschema, name=None):
     ns = builder.build_classes()
     _container[name] = ns
 
-    print("Created object %s" % name )
+    print("Created object %s" % name)
+    return getattr(_container[name], name)
+
 
 def get(name):
     global _container
@@ -23,6 +34,7 @@ def get(name):
         print(_container[name])
         print(dir(_container[name]))
         raise
+
 
 def create(name, jsonstring):
     global _container
@@ -35,11 +47,11 @@ def create(name, jsonstring):
     except python_jsonschema_objects.validators.ValidationError:
         logging.exception("Failed to marshal JSON object to %s" % clazz)
         raise
+
+
 _container = {}
 
-
-
-SESSION='''{
+SESSION = '''{
             "$schema": "http://json-schema.org/draft-03/schema",
             "properties": {
               "username": {
@@ -98,7 +110,6 @@ _declare_object('''{
             "type": "object",
             "additionalProperties": false
         }''', "Newdeployment")
-
 
 _declare_object('''{
             "$schema": "http://json-schema.org/draft-03/schema",

@@ -285,10 +285,18 @@ if __name__ == "__main__":
     schema={
       "$schema": "http://json-schema.org/draft-04/schema#",
       "id": "http://vmware.com/go/loginsight/api/raml",
-        "title": "Something",
-        "type": "object",
-        "oneOf": [],
-        "definitions": {}
+        #"title": "Something",
+        #"type": "object",
+        #"oneOf": [],
+        "definitions": {},
+        "name": "ASDF",
+        "properties": {
+            "schemaversion": {
+                "type": "string",
+                "default": "a7f49308cccfa22a440bc2d519883853bbf2174c",
+                #"enum": ["a7f49308cccfa22a440bc2d519883853bbf2174c"]
+            }
+        }
     }
 
     from pprint import pprint
@@ -300,9 +308,10 @@ if __name__ == "__main__":
             logger.warning("%s already in schema[definitions]!" % splice_schema['id'], splice_schema)
             continue
         schema['definitions'][splice_schema['id']] = splice_schema
-        schema['oneOf'].append({
-            "$ref": "#/definitions/%s" % splice_schema['id']
-        })
+        #schema['oneOf'].append({
+        #    "$ref": "#/definitions/%s" % splice_schema['id']
+        #})
+
 
         if 'definitions' in splice_schema:
             # child definitions
@@ -317,7 +326,7 @@ if __name__ == "__main__":
     c = o.classes
 
 
-    #with open("render.py", 'w') as f:
+    #with open("render.json", 'w') as f:
     #    pprint(schema, stream=f)
 
 

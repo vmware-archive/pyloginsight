@@ -77,7 +77,7 @@ def test_example_against_schema(examplestring, schema, verb=None, path=None, ctx
         if args.no3 and schema['$schema'] == 'http://json-schema.org/draft-03/schema':
             raise Schema03('', context=context)
 
-        if type(schema)==str:
+        if type(schema) == str:
             schema_string_reason = None
             try:
                 json.loads(schema)

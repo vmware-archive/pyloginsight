@@ -1,6 +1,5 @@
 import sys
-
-from ..Connection import Connection
+from ..Connection import Server
 import argparse
 import logging
 
@@ -32,9 +31,9 @@ def main():
     print(c)
     print(str(c))
     print(repr(c))
-    conn = Connection(args.server, verify=False)
+    conn = Server(args.server, verify=False)
 
-    print(conn.version())
+    print(repr(conn.version))
 
 
 if __name__ == '__main__':

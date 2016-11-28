@@ -7,9 +7,7 @@ import json
 
 
 def main(q):
-    
-    
-    EVENTSSCHEMA='''                {
+    EVENTSSCHEMA = '''                {
                   "$schema": "http://json-schema.org/draft-04/schema",
                   "properties": {
                     "events": {
@@ -64,7 +62,7 @@ def main(q):
     ns = builder.build_classes()
     print(ns)
 
-    SESSIONSCHEMA='''{
+    SESSIONSCHEMA = '''{
                 "$schema": "http://json-schema.org/draft-03/schema",
                 "properties": {
                   "username": {
@@ -83,29 +81,25 @@ def main(q):
                 "additionalProperties": false
               }'''
     s4 = json.loads(SESSIONSCHEMA)
-    
+
     if "title" not in s4:
-        s4["title"]="Session"
-    
-    #print (SESSIONSCHEMA)
+        s4["title"] = "Session"
+
     builder = python_jsonschema_objects.ObjectBuilder(s4)
     ns = builder.build_classes()
     print(ns)
     print(dir(ns))
-    
+
     s = getattr(ns, "Session")()
-    print (s)
-    print (dir(s))
-    
-    s.username="userGuy"
-    s.password="a"
+    print(s)
+    print(dir(s))
+
+    s.username = "userGuy"
+    s.password = "a"
     print(s)
     print(s.serialize())
-    
+
     return ns
-    
-
-
 
 
 if __name__ == "__main__":
@@ -115,5 +109,4 @@ if __name__ == "__main__":
     formatter = logging.Formatter(u'%(asctime)s %(levelname)s: %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-    
     main(None)

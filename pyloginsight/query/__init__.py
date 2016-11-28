@@ -17,20 +17,18 @@
 # limitations under the License.
 
 
-
 # A "Constraint" consists of (field, operator, value).
 
 from . import Operator
 from requests.utils import quote
 import warnings
 
+
 class Constraint:
-    """"""
     def __init__(self, field="text", operator=Operator.CONTAINS, value=""):
         self.field = field
         self.operator = operator
         self.value = value
-
 
     def __str__(self):
         """Url-encode each of the arguments, and return a query fragment like `/field/operator value`."""
@@ -38,8 +36,7 @@ class Constraint:
             self.value = str(int(self.value))
         if self.operator in Operator._TIME and self.field != 'timestamp':
             raise(ValueError("Time operator '%s' can only be used with the 'timestamp' field." % self.operator))
-
-        if self.operator in Operator._BOOLEAN: # Boolean operators don't include a value
+        if self.operator in Operator._BOOLEAN:  # Boolean operators don't include a value
             warnings.warn("Attempted to use boolean operator with a value")
             return '/' + quote(self.field, safe="") + '/' + quote(self.operator, safe="")
         else:
@@ -49,6 +46,7 @@ class Constraint:
         """A human-readable representation of the constraint, in constructor form."""
         return 'Constraint("%s", %s, "%s")' % (self.field, self.operator, self.value)
 
+
 class Parameters(dict):
     def __init__(self, order="DESC", view="DEFAULT", limit=100, timeout=30000, contentpackfields="", *args, **kwargs):
         self.update(*args, **kwargs)
@@ -57,8 +55,8 @@ class Parameters(dict):
         self.__setitem__("timeout", timeout)
         self.__setitem__("content-pack-fields", contentpackfields)
 
+
 class Query:
     def __init__(self, constraints=None, parameters=None):
         if constraints is None:
             constraints = []
-
