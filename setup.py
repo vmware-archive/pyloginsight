@@ -6,7 +6,7 @@ from pyloginsight import __version__ as pyloginsightversion
 
 requires = ['requests', 'ramlfications', 'six', 'jsonschema']
 
-testrequires = requires.extend(["requests_mock"])
+testrequires = requires + ["requests_mock"]
 
 setup(
     name='pyloginsight',
