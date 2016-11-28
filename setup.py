@@ -1,12 +1,53 @@
 #!/usr/bin/env python
 
+import sys
 from setuptools import setup, find_packages
-from pyloginsight import __version__ as pyloginsightversion
+from setuptools.command.test import test as TestCommand
+
+from pyloginsight import __version__ as pyloginsightversion  # TODO Replace with a static variant?
 
 
-requires = ['requests', 'ramlfications', 'six', 'jsonschema']
+class PyTest(TestCommand):
+    user_options = [('pytest-args=', 'a', "Arguments to pass to pytest")]
+    description = "Run tests in the current environment"
 
-testrequires = requires + ["requests_mock"]
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.args = []
+
+    def run(self):
+        import shlex
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+
+        try:
+            args = shlex.split(self.args)
+        except AttributeError:
+            args = []
+        errno = pytest.main(args)
+        sys.exit(errno)
+
+
+class ToxTest(TestCommand):
+    user_options = [('tox-args=', "t", "Arguments to pass to pytest")]
+    description = "Run tests in all configured tox environments"
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.args = []
+
+    def run(self):
+        import shlex
+        # import here, cause outside the eggs aren't loaded
+        from tox.__main__ import main
+
+        try:
+            args = shlex.split(self.args)
+        except AttributeError:
+            args = []
+        errno = main(args)
+        sys.exit(errno)
+
 
 setup(
     name='pyloginsight',
@@ -14,8 +55,8 @@ setup(
     url='http://github.com/vmware/pyloginsight/',
     license='Apache Software License 2.0',
     author='Alan Castonguay',
-    install_requires=requires,
-    tests_require=testrequires,
+    install_requires=['requests', 'ramlfications', 'six', 'jsonschema'],
+    tests_require=["requests_mock", "pytest"],
     description='VMware vRealize Log Insight Client',
     author_email='acastonguay@vmware.com',
     long_description=open('README.rst').read(),
@@ -37,5 +78,6 @@ setup(
         'console_scripts': [
             'li = pyloginsight.cli.__main__:main'
         ]
-    }
+    },
+    cmdclass={'test': PyTest, 'tox': ToxTest}
 )
