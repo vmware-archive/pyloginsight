@@ -24,6 +24,7 @@ import collections
 logger = logging.getLogger(__name__)
 APIV1 = '/api/v1'
 
+
 def default_user_agent():
     return "pyloginsight 0.1"
 
@@ -43,7 +44,6 @@ class Credentials(requests.auth.AuthBase):
 
     def __init__(self, server, username, password, provider, sessionId=None, reuse_session=None):
         """If passed an existing sessionId, try to use it."""
-        #self.server = server  # Server object, from which we consume apiroot, requests_session, _verify
         self.username = username
         self.password = password
         self.provider = provider
@@ -156,13 +156,11 @@ class Connection(object):
                                       params=params)
         return r
 
-
     def get(self, url, params=None, sendauthorization=True):
         return self._requestsession.get(self._apiroot + url,
                                         verify=self._verify,
                                         auth=self._authprovider if sendauthorization else None,
                                         params=params)
-
 
     def delete(self, url, params=None, sendauthorization=True):
         return self._requestsession.delete(self._apiroot + url,
@@ -173,6 +171,8 @@ class Connection(object):
     @property
     def server(self):
         return Server(self)
+
+
 class Server(Connection):
     """High-level object representing the capabilities of a remote Log Insight server"""
     _authprovider = None
@@ -212,10 +212,12 @@ class Server(Connection):
 
     # TODO: Model the server features as properties
 
+
 class ServerList(collections.Sequence):
     """A server-backed list of items. Can be appended to, sliced, etc.
     Updating an item in the list usually means POST/PUTing a full new list."""
     pass
+
 
 class ServerDict(collections.MutableMapping):
     """A server-backed dictionary (hashmap) or items, usually keyed by a UUID.
