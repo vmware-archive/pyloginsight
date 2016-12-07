@@ -212,12 +212,12 @@ class Server(Connection):
 
     # TODO: Model the server features as properties
 
-class ServerList(collections.abc.Sequence):
+class ServerList(collections.Sequence):
     """A server-backed list of items. Can be appended to, sliced, etc.
     Updating an item in the list usually means POST/PUTing a full new list."""
     pass
 
-class ServerDict(collections.abc.MutableMapping):
+class ServerDict(collections.MutableMapping):
     """A server-backed dictionary (hashmap) or items, usually keyed by a UUID.
     Adding, deleting or updating an item usually means POST/PUTing a single item's resource."""
     pass

@@ -115,6 +115,7 @@ class TestConnection():
         # No headers leaked
         assert "Authorization" not in connection._requestsession.headers
 
+
 class TestServer():
     def test_version_number_without_authentication(self):
         """
