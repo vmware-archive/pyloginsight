@@ -5,3 +5,4 @@
 *.pyc
 *.pyo
 .eggs
+CREDENTIALS.py

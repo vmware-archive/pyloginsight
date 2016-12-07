@@ -47,7 +47,7 @@ class Constraint:
         return 'Constraint("%s", %s, "%s")' % (self.field, self.operator, self.value)
 
 
-class Parameters(dict):
+class Parameter(dict):
     def __init__(self, order="DESC", view="DEFAULT", limit=100, timeout=30000, contentpackfields="", *args, **kwargs):
         self.update(*args, **kwargs)
         self.__setitem__("order-by-direction", order)
