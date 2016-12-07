@@ -20,13 +20,16 @@ import requests
 import logging
 from requests.compat import urlunparse
 import collections
+from distutils.version import StrictVersion
+from . import __version__ as version
+
 
 logger = logging.getLogger(__name__)
 APIV1 = '/api/v1'
 
 
 def default_user_agent():
-    return "pyloginsight 0.1"
+    return "pyloginsight/{0}".format(version)
 
 
 class ServerError(RuntimeError):
@@ -40,9 +43,8 @@ class Unauthorized(ServerError):
 class Credentials(requests.auth.AuthBase):
     """An authorization header, with bearer token, is included in each HTTP request.
     Based on http://docs.python-requests.org/en/master/_modules/requests/auth/"""
-    server = None
 
-    def __init__(self, server, username, password, provider, sessionId=None, reuse_session=None):
+    def __init__(self, username, password, provider, sessionId=None, reuse_session=None):
         """If passed an existing sessionId, try to use it."""
         self.username = username
         self.password = password
@@ -55,12 +57,9 @@ class Credentials(requests.auth.AuthBase):
         if self.username is None or self.password is None:
             raise RuntimeError("Cannot authenticate without username/password")
         logging.info("Attempting to authenticate as {0}".format(self.username))
-        # This inner request does not pass auth=self, and it does not recurse.
         authdict = {"username": self.username, "password": self.password, "provider": self.provider}
 
-        # TODO: This is probably a bad pattern. Reconsider the way it reaches into the Server object.
         prep = previousresponse.request.copy()
-
         try:
             del prep.headers['Authorization']
         except KeyError:
@@ -99,7 +98,6 @@ class Credentials(requests.auth.AuthBase):
         self.sessionId = self.get_session(r, **kwargs)
 
         # Now that we have a good session, copy and retry the original request. If it fails again, raise Unauthorized.
-
         prep = r.request.copy()
         prep.headers.update({"Authorization": "Bearer %s" % self.sessionId})
         _r = r.connection.send(prep, **kwargs)
@@ -122,31 +120,32 @@ class Credentials(requests.auth.AuthBase):
 
         # Attempt the request. If it fails with a 401, generate a new sessionId
         r.register_hook('response', self.handle_401)
-        # r.register_hook('response', self.handle_redirect)
         return r
 
+    def __repr__(self):
+        return '{cls}(username={x.username!r}, password=..., provider={x.provider!r})'.format(cls=self.__class__.__name__, x=self)
 
 class Connection(object):
     """Low-level HTTP transport connecting to a remote Log Insight server's API.
     Attempts requests to the server which require authentication. If requests fail with HTTP 401 Unauthorized,
-    obtains a session bearer token and retries the request."""
-    _authprovider = None
+    obtains a session bearer token and retries the request.
+    You should probably use the :py:class:: Server class instead"""
 
-    def __init__(self, hostname, port=9543, ssl=True, verify=True, auth=None):
-        self._requestsession = requests.Session()
+    def __init__(self, hostname, port=9543, ssl=True, verify=True, auth=None, existing_session=None):
+        self._requestsession = existing_session or requests.Session()
         self._hostname = hostname
         self._port = port
         self._ssl = ssl
         self._verify = verify
+        self._authprovider = auth
 
         self._apiroot = '{method}://{hostname}:{port}{apiv1}'.format(method='https' if ssl else 'http',
                                                                      hostname=hostname, port=port, apiv1=APIV1)
 
         self._requestsession.headers.update({'User-Agent': default_user_agent()})
         logging.debug("Connected to {0}".format(self))
-        self._authprovider = auth
 
-    def post(self, url, data=None, json=None, params=None, sendauthorization=True):
+    def _post(self, url, data=None, json=None, params=None, sendauthorization=True):
         """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
         r = self._requestsession.post(self._apiroot + url,
                                       data=data,
@@ -156,40 +155,63 @@ class Connection(object):
                                       params=params)
         return r
 
-    def get(self, url, params=None, sendauthorization=True):
+    def _get(self, url, params=None, sendauthorization=True):
         return self._requestsession.get(self._apiroot + url,
                                         verify=self._verify,
                                         auth=self._authprovider if sendauthorization else None,
                                         params=params)
 
-    def delete(self, url, params=None, sendauthorization=True):
+    def _delete(self, url, params=None, sendauthorization=True):
         return self._requestsession.delete(self._apiroot + url,
                                            verify=self._verify,
                                            auth=self._authprovider if sendauthorization else None,
                                            params=params)
 
+    def _put(self, url, data=None, json=None, params=None, sendauthorization=True):
+        """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
+        r = self._requestsession.put(self._apiroot + url,
+                                      data=data,
+                                      json=json,
+                                      verify=self._verify,
+                                      auth=self._authprovider if sendauthorization else None,
+                                      params=params)
+        return r
+
+    def _patch(self, url, data=None, json=None, params=None, sendauthorization=True):
+        """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
+        r = self._requestsession.patch(self._apiroot + url,
+                                      data=data,
+                                      json=json,
+                                      verify=self._verify,
+                                      auth=self._authprovider if sendauthorization else None,
+                                      params=params)
+        return r
+
+    def __repr__(self):
+        """Human-readable and machine-executable description of the current connection."""
+        return '{cls}(hostname={x._hostname!r}, port={x._port!r}, ssl={x._ssl!r}, verify={x._verify!r}, auth={x._authprovider!r})'.format(cls=self.__class__.__name__, x=self)
+
     @property
     def server(self):
-        return Server(self)
+        return Server.copy_connection(self)
+
+    @classmethod
+    def copy_connection(cls, connection):
+        return cls(hostname=connection._hostname,
+                   port=connection._port,
+                   ssl=connection._ssl,
+                   verify=connection._verify,
+                   auth=connection._authprovider,
+                   existing_session=connection._requestsession)
 
 
 class Server(Connection):
     """High-level object representing the capabilities of a remote Log Insight server"""
-    _authprovider = None
-
-    @classmethod
-    def from_connection(cls, connection):
-        return cls(connection._hostname, connection._port, connection._ssl, connection._verify, connection._authprovider)
-
-    def __repr__(self):
-        return "Server({0})".format(repr(self._apiroot))
 
     @property
     def version(self):
-        """Retrieve version number of remote server"""
-        from distutils.version import StrictVersion  # distutils isn't lightweight; don't import it unless needed
-
-        resp = self.get("/version").json()
+        """Version number of remote server as a :py:class:: distutils.version.StrictVersion"""
+        resp = self._get("/version").json()
 
         # The "version number" contains build-flags (e.g., build number, "TP") after the dash; ignore them
         # 1.2.3-build.flag.names
@@ -199,6 +221,7 @@ class Server(Connection):
     def login(self, username, password, provider):
         # TODO: Should this attempt to use the credentials?
         self._authprovider = Credentials(username=username, password=password, provider=provider)
+
 
     @property
     def is_bootstrapped(self):
