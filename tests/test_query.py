@@ -1,6 +1,6 @@
 import pytest
 import warnings
-from pyloginsight.query import Constraint, Operator, Parameters
+from pyloginsight.query import Constraint, Operator, Parameter
 
 """Examples from "Specifying constraints" section of https://vmw-loginsight.github.io/#Querying-data"""
 
@@ -49,5 +49,5 @@ def test_constraint_exists():
 
 
 def test_parameters():
-    x = Parameters(order="ASC", limit=4, timeout=20, contentpackfields="x,y,z", super="abc")
+    x = Parameter(order="ASC", limit=4, timeout=20, contentpackfields="x,y,z", super="abc")
     print(x)
