@@ -1,4 +1,5 @@
 import pytest
+from distutils.version import StrictVersion
 
 from pyloginsight.Connection import Connection, Server, Credentials, Unauthorized
 import requests_mock
@@ -20,7 +21,7 @@ class TestConnection():
         Force an HTTP 401 response on an non-credentialed request for the protected /demand_auth resource.
         The AuthorizationHeaderAuthentication should request /demand_auth, observe a HTTP 401, login, & retry the request.
         """
-        credentials = Credentials(server=None, username="admin", password="pass", provider="mock")
+        credentials = Credentials(username="admin", password="pass", provider="mock")
         connection = Connection("mockserver", auth=credentials)
 
         adapter = requests_mock.Adapter()
@@ -37,7 +38,7 @@ class TestConnection():
 
         connection._requestsession.mount('https://', adapter)
 
-        r = connection.post("/demand_auth", data="submitbody")
+        r = connection._post("/demand_auth", data="submitbody")
 
         assert adapter_sessions.call_count == 1
         assert adapter_success.call_count == 1
@@ -57,7 +58,7 @@ class TestConnection():
         The AuthorizationHeaderAuthentication should request /demand_auth, observe a HTTP 401, login, & retry the request,
         but then give up.
         """
-        credentials = Credentials(server=None, username="admin", password="pass", provider="mock")
+        credentials = Credentials(username="admin", password="pass", provider="mock")
         connection = Connection("mockserver", auth=credentials)
 
         adapter = requests_mock.Adapter()
@@ -72,7 +73,7 @@ class TestConnection():
         connection._requestsession.mount('https://', adapter)
 
         with pytest.raises(Unauthorized) as excinfo:
-            connection.post("/demand_auth", data="submitbody")
+            connection._post("/demand_auth", data="submitbody")
 
         assert excinfo.value.args[0] == 'Authentication failed'
         assert excinfo.value.args[1].status_code == 401
@@ -90,7 +91,7 @@ class TestConnection():
         Also fail /sessions requests
         The AuthorizationHeaderAuthentication should request /demand_auth, observe a HTTP 401, fail to login & raise exception
         """
-        credentials = Credentials(server=None, username="admin", password="wrongpassword", provider="mock")
+        credentials = Credentials(username="admin", password="wrongpassword", provider="mock")
         connection = Connection("mockserver", auth=credentials)
 
         adapter = requests_mock.Adapter()
@@ -104,7 +105,7 @@ class TestConnection():
         connection._requestsession.mount('https://', adapter)
 
         with pytest.raises(Unauthorized) as excinfo:
-            connection.post("/demand_auth", data="submitbody")
+            connection._post("/demand_auth", data="submitbody")
 
         assert excinfo.value.args[0] == 'Authentication failed'
         assert excinfo.value.args[1].status_code == 200
@@ -117,6 +118,23 @@ class TestConnection():
 
 
 class TestServer():
+    def test_connection_to_server(self):
+        """
+        A Connection instance carries a .server property which returns a Server object that looks very similar to the Connection
+        """
+
+        credentials = Credentials(username="admin", password="wrongpassword", provider="mock")
+        connection = Connection("mockserver", auth=credentials)
+
+        server = connection.server
+
+        for x in connection.__dict__:
+            assert x in server.__dict__
+            assert server.__dict__[x] == connection.__dict__[x]
+
+        print(credentials)
+        print(connection)
+
     def test_version_number_without_authentication(self):
         """
         Requests to /version should succeeed regardless of whether authentication is present
@@ -136,13 +154,15 @@ class TestServer():
 
         server_version = noauth_connection.version
         assert server_version == "1.2.3"
+        assert server_version > StrictVersion("1.2.0")
 
         # Request /version with authentication-capable connection (auth=Credentials) - should work without demanding credentials
-        credentials = Credentials(server=None, username="admin", password="wrongpassword", provider="mock")
+        credentials = Credentials(username="admin", password="wrongpassword", provider="mock")
         connection = Server("mockserver", auth=credentials)
 
         server_version = noauth_connection.version
         assert server_version == "1.2.3"
+        assert server_version > StrictVersion("1.2.0")
 
         assert adapter_version.call_count == 2
         assert adapter_sessions.call_count == 0  # Authentication is not required or attempted.
