@@ -18,7 +18,7 @@
 # from . import model
 import requests
 import logging
-from requests.compat import urlunparse
+from requests.compat import urlunparse, urlparse
 import collections
 from distutils.version import StrictVersion
 from . import __version__ as version
@@ -68,8 +68,13 @@ class Credentials(requests.auth.AuthBase):
             del prep.headers['Authorization']
 
         prep.prepare_method("post")
-        prep.prepare_url(urlunparse([previousresponse.request.scheme,
-                                     previousresponse.request.netloc,
+        print(previousresponse)
+        print(previousresponse.request)
+        print(dir(previousresponse.request))
+
+        p = urlparse(previousresponse.request.url)
+        prep.prepare_url(urlunparse([p.scheme,
+                                     p.netloc,
                                      APIV1 + "/sessions",
                                      None,
                                      None,
@@ -125,6 +130,7 @@ class Credentials(requests.auth.AuthBase):
     def __repr__(self):
         return '{cls}(username={x.username!r}, password=..., provider={x.provider!r})'.format(cls=self.__class__.__name__, x=self)
 
+
 class Connection(object):
     """Low-level HTTP transport connecting to a remote Log Insight server's API.
     Attempts requests to the server which require authentication. If requests fail with HTTP 401 Unauthorized,
@@ -170,21 +176,21 @@ class Connection(object):
     def _put(self, url, data=None, json=None, params=None, sendauthorization=True):
         """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
         r = self._requestsession.put(self._apiroot + url,
-                                      data=data,
-                                      json=json,
-                                      verify=self._verify,
-                                      auth=self._authprovider if sendauthorization else None,
-                                      params=params)
+                                     data=data,
+                                     json=json,
+                                     verify=self._verify,
+                                     auth=self._authprovider if sendauthorization else None,
+                                     params=params)
         return r
 
     def _patch(self, url, data=None, json=None, params=None, sendauthorization=True):
         """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
         r = self._requestsession.patch(self._apiroot + url,
-                                      data=data,
-                                      json=json,
-                                      verify=self._verify,
-                                      auth=self._authprovider if sendauthorization else None,
-                                      params=params)
+                                       data=data,
+                                       json=json,
+                                       verify=self._verify,
+                                       auth=self._authprovider if sendauthorization else None,
+                                       params=params)
         return r
 
     def __repr__(self):
@@ -221,7 +227,6 @@ class Server(Connection):
     def login(self, username, password, provider):
         # TODO: Should this attempt to use the credentials?
         self._authprovider = Credentials(username=username, password=password, provider=provider)
-
 
     @property
     def is_bootstrapped(self):
