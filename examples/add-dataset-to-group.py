@@ -6,7 +6,7 @@ import argparse
 
 
 class Capability():
-    """ Class represoenting a single capability. """
+    """ Class that helps interact with existing capability on the Log Insight server. """
 
     def __init__(self, id=""):
         self.ANALYTICS = 'ANALYTICS'
@@ -17,7 +17,8 @@ class Capability():
         self.INVENTORY = 'INVENTORY'
         self.STATISTICS = 'STATISTICS'
         self.VIEW_ADMIN = 'VIEW_ADMIN'
-        self._CAPABILITIES = [self.ANALYTICS, self.DASHBOARD, self.EDIT_ADMIN, self.EDIT_SHARED, self.INTERNAL, self.INVENTORY, self.STATISTICS, self.VIEW_ADMIN]
+        self._CAPABILITIES = [self.ANALYTICS, self.DASHBOARD, self.EDIT_ADMIN,
+                              self.EDIT_SHARED, self.INTERNAL, self.INVENTORY, self.STATISTICS, self.VIEW_ADMIN]
         self.id = id
         assert self.id in self._CAPABILITIES
 
@@ -25,44 +26,72 @@ class Capability():
         return {'id': self.id}
 
     def __repr__(self):
-        """A human-readable representation of the constraint, in constructor form."""
+        """A human-readable representation of the capability, in constructor form."""
         return '{cls}(id={x.id!r})'.format(cls=self.__class__.__name__, x=self)
 
 
 class Group():
-    """ Class that represents a single log insight group. """
-    # Depending on how vIDM and AD groups appear, there may be room for a
-    # subclass here.
+    """ Class that helps interact an existing group on the Log Insight server. """
 
-    def __init__(self, group_id="", name="", description="", capabilities=[], required=False, editable=True, **kwargs):
-        self.id = group_id
+    def __init__(self, id, name, description, capabilities, required, editable):
+        self.id = id
         self.name = name
         self.description = description
         self.capabilities = capabilities
         self.required = required
         self.editable = editable
 
-
     def __repr__(self):
-        """A human-readable representation of the constraint, in constructor form."""
+        """A human-readable representation of the group, in constructor form."""
         return '{cls}(id={x.id!r}, name={x.name!r}, description={x.description!r}, capabilities={x.capabilities!r}, required={x.required!r}, editable={x.editable!r})'.format(cls=self.__class__.__name__, x=self)
 
 
-class PostDatasetSpecification():
-    """ Class that enforces the data being sent to LI when creating a
-    dataset. DISCLAIMER: This API may be experimental and not supported. """
+class Dataset():
+    """ Class used to interact with and existing dataset on the Log Insight server. """
+
+    def __init__(self, id, name, description, constraints, type):
+        self.id = id
+        self.name = name
+        self.description = description
+        self.constraints = constraints
+        self.type = type
+
+    def __repr__(self):
+        """A human-readable representation of the dataset, in constructor form."""
+        return '{cls}(id={x.id!r}, name={x.name!r}, description={x.description!r}, constraints={x.constraints!r}, type={x.type!r}'.format(cls=self.__class__.__name__, x=self)
+
+
+class DatasetSpec():
+    """ Class that defines a dataset that needs to be created. """
+   
+    def __init__(self, id="", name="", description="", constraints=[], type=""):
+        self.name = name
+        self.description = description
+        self.constraints = constraints
+
+    def __repr__(self):
+        """A human-readable representation of the DatasetSpec, in constructor form."""
+        return '{cls}(name={x.name!r}, description={x.description!r}, constraints={x.constraints!r}'.format(cls=self.__class__.__name__, x=self)
+   
+
+class PostDatasetSpec():
+    """ Class that enforces the data being sent to LI when creating a dataset. """
 
     def __init__(self, name, description, constraint_list):
         self.name = name
         self.description = description
         self.constraint_list
 
-    def __repr__(self):
+    def dict(self):
         return {
             'name': self.name,
             'description': self.description,
             'constraints': self.constraint_list
         }
+
+    def __repr__(self):
+        """A human-readable representation of the constraint, in constructor form."""
+        return '{cls}(id={x.name!r}, description={x.description!r}, constraint_list={x.constraint_list})'.format(cls=self.__class__.__name__, x=self)
 
 
 class PostGroupIdDatasetSpec():
@@ -75,33 +104,29 @@ class PostGroupIdDatasetSpec():
         self.dataset_add_list = dataset_add_list
         self.dataset_remove_list = dataset_remove_list
 
-    def __repr__(self):
+    def dict(self):
         return {
             'dataSetsToAdd': self.dataset_add_list,
             'dataSetsToRemove': self.dataset_remove_list
         }
 
+    def __repr__(self):
+        """A human-readable representation of the constraint, in constructor form."""
+        return '{cls}(group_id={x.group_id!r}, dataset_add_list={x.dataset_add_list!r}, dataset_remove_list={x.dataset_remove_list})'.format(cls=self.__class__.__name__, x=self)
+
 
 class ServerPlus(Server):
-
-    @property
-    def users(self):
-        """ Get a list of users and their properties. DISCLAIMER: At the time of writing this API was a technical preview. """
-        #return self._get('/users').json()['users']
-        raise NotImplemented
+    """ Extends the functionality of the Server class by adding groups, and
+    datasets. """
 
     @property
     def groups(self):
         """ Get a list of groups and their properties. DISCLAIMER: At the time of writing this API was a technical preview. """
 
-        # Too complext for list comprehensions, my refactor later.
-        # Iterate over all of the groups to create instances of the Group class.
         groups = []
         for group in self._get('/groups').json()['groups']:
             capabilities = []
-            
-            # Iterate over all of the capabilities to create instances of
-            # Capability class
+
             for capability in group['capabilities']:
                 capabilities.append(Capability(id=capability['id']))
 
@@ -113,44 +138,85 @@ class ServerPlus(Server):
                     required=bool(group['required']),
                     editable=bool(group['editable']),
                     capabilities=capabilities
-                    ))
+                ))
 
         return groups
-
-
-    @property
-    def ad_groups(self):
-        """ Get a list of active directory groups and their properties.  DISCLAIMER: At the time of writing this API was a technical preview. """
-        #return self._get('/authgroups/ad').json()
-        raise NotImplemented
 
     @property
     def datasets(self):
         """ Get a list of datasets and their properties. DISCLAIMER: At the time of writing this API was a technical preview. """
-        #return self._get('/datasets').json()['datasets']
-        raise NotImplemented
+        datasets = []
+        for dataset in self._get('/datasets').json()['dataSets']:
 
+            constraints = []
+            for constraint in dataset['constraints']:
+                constraints.append(
+                    Constraint(
+                        field=constraint['name'],
+                        operator=constraint['operator'],
+                        value=constraint['value']
+                    )
+                )
+
+            datasets.append(
+                Dataset(
+                    id=dataset['id'],
+                    name=dataset['name'],
+                    description=dataset['description'],
+                    type=dataset['type'],
+                    constraints=constraints
+                )
+            )
+
+        return datasets
+
+
+    def create_dataset(self, dataset):
+        """ Given a Dataset class instance, create it on the server. """
+
+
+
+        self._post('/datasets')
+        pass
+
+    def add_dataset_to_group(self, dataset, group):
+        pass
 
 
 if __name__ == "__main__":
 
-    # Basic CLI
     parser = argparse.ArgumentParser()
-    parser.add_argument('username')
-    parser.add_argument('password')
-    parser.add_argument('provider')
-    parser.add_argument('server')
+    parser.add_argument('-u', '--username', required=False, default=None)
+    parser.add_argument('-p', '--password', required=False, default=None)
+    parser.add_argument('-P', '--provider', required=False, default=None)
+    parser.add_argument('-s', '--server', required=True)
+    parser.add_argument('-g', '--group', required=False, default=None)
+    parser.add_argument('-d', '--dataset', required=False, default=None)
     args = parser.parse_args()
 
-    # Credentials
-    creds = Credentials(
-        username=args.username,
-        password=args.password,
-        provider=args.provider)
+    server = ServerPlus(args.server, verify=False)
 
-    # Use modified Server class.
-    server = ServerPlus(
-        args.server,
-        auth=creds,
-        verify=False)
+
+    if not args.provider:
+        # TODO: Get a list of providers for the user and display them.
+        print('No provider value')
+        pass
+
+
+    if args.username and args.password and args.provider:
+        server.login(
+            username=args.username,
+            password=args.password,
+            provider=args.provider
+        )
+
+
+    if not args.group:
+        print('\nNo group detected.  Getting groups: ')
+        print('\n'.join([' - '.join([x.id, x.name]) for x in server.groups]))
+
+
+    if not args.dataset:
+        print('\nNo dataset detected.  Geting datasets: ')
+        print('\n'.join([' - '.join([x.id, x.name]) for x in server.datasets]))
 
