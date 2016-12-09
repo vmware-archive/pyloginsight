@@ -199,7 +199,6 @@ if __name__ == "__main__":
 
     if not args.provider:
         # TODO: Get a list of providers for the user and display them.
-        print('No provider value')
         pass
 
 
