@@ -68,9 +68,6 @@ class Credentials(requests.auth.AuthBase):
             del prep.headers['Authorization']
 
         prep.prepare_method("post")
-        print(previousresponse)
-        print(previousresponse.request)
-        print(dir(previousresponse.request))
 
         p = urlparse(previousresponse.request.url)
         prep.prepare_url(urlunparse([p.scheme,
