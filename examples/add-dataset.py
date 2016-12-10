@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 from pyloginsight.Connection import Server
-from dataset import DatasetSpec
+from models import DatasetSpec
 import argparse
+import sys
 
 
 class ServerPlus(Server):
@@ -16,7 +17,6 @@ class ServerPlus(Server):
         data = DatasetSpec(name=name, description=description, constraints=constraints).json()
         response = server._post('/datasets',data=data)
 
-        #handle error if the constraint values provided are no good.
         if not response.ok:
             for (field, errors) in response.json()['errorDetails'].items():
 
@@ -28,9 +28,7 @@ class ServerPlus(Server):
                 
                 if field == 'fieldType':
                     print('The --type {m}'.format(m=errors[0]['errorMessage'].replace('Value','value')))
-
-        if response.ok:
-            return response
+            sys.exit(1)
        
 
 if __name__ == "__main__":
@@ -49,17 +47,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     server = ServerPlus(args.server, verify=False)
-        
+    server.login( username=args.username, password=args.password, provider=args.provider)
 
-    if args.username and args.password and args.provider:
-        server.login(
-            username=args.username,
-            password=args.password,
-            provider=args.provider
-        )
-
-    # TODO: The existing Constraint class in the query module has some limitations I
-    # need fo fix later.
     constraints = [{'name': args.field, 'operator': args.operator, 'value':args.value, 'fieldType': args.type}]  
     server.add_dataset(name=args.name, description=args.description, constraints=constraints)
 
