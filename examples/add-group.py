@@ -15,7 +15,7 @@ class ServerPlus(Server):
 
         known_capabilities = ('ANALYTICS', 'DASHBOARDS', 'EDIT_ADMIN', 'EDIT_SHARED', 'INTERNAL', 'INVENTORY', 'STATISTICS', 'VIEW_ADMIN')
         data = GroupSpec(name=name, description=description, capabilities=capabilities).json()
-        response = server._post('/groups', data=data)
+        response = self._post('/groups', data=data)
 
         if not response.ok:
             print(response.json()['errorMessage'])
