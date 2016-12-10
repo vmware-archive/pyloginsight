@@ -19,10 +19,16 @@
 import logging
 
 __title__ = 'pyloginsight'
-__version__ = '0.1'
 __build__ = None
 __author__ = 'Alan Castonguay'
 __license__ = 'Apache Software License 2.0'
+
+
+try:
+    from .__version__ import version as __version__
+except ImportError:
+    __version__ = "0.dev0"  # Mirrors setup.py. Should only be used if the package was installed from source.
+
 
 # Set default logging handler to avoid "No handler found" warnings.
 try:  # Python 2.7+
