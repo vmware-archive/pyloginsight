@@ -103,11 +103,8 @@ class PostGroupIdDatasetSpec():
         self.dataset_add_list = dataset_add_list
         self.dataset_remove_list = dataset_remove_list
 
-    def dict(self):
-        return {
-            'dataSetsToAdd': self.dataset_add_list,
-            'dataSetsToRemove': self.dataset_remove_list
-        }
+    def json(self):
+        return json.dumps({'dataSetsToAdd': self.dataset_add_list, 'dataSetsToRemove': self.dataset_remove_list})
 
     def __repr__(self):
         """A human-readable representation of the constraint, in constructor form."""
