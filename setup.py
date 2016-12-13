@@ -4,7 +4,16 @@ import sys
 from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
-from pyloginsight import __version__ as pyloginsightversion  # TODO Replace with a static variant?
+# If a version number has been written to file inside the package, use it as the package version.
+# Read the file directly instead of importing the package to avoid taking a dependency on the
+# package before it's installed.
+try:
+    version_namespace = {}
+    with open('pyloginsight/__version__.py') as f:
+        exec(f.read(), version_namespace)
+    packageversion = version_namespace['version']
+except KeyError:
+    packageversion = "0.dev0"
 
 
 class PyTest(TestCommand):
@@ -51,7 +60,7 @@ class ToxTest(TestCommand):
 
 setup(
     name='pyloginsight',
-    version=pyloginsightversion,
+    version=packageversion,
     url='http://github.com/vmware/pyloginsight/',
     license='Apache Software License 2.0',
     author='Alan Castonguay',
