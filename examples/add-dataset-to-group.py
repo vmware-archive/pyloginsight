@@ -4,6 +4,7 @@ from pyloginsight.Connection import Server
 from pyloginsight.query import Constraint
 from models import PostGroupIdDatasetSpec
 import argparse
+import json
 
 
 class ServerPlus(Server):
@@ -17,7 +18,7 @@ class ServerPlus(Server):
             dataset_remove_list = []
         ).json()
 
-        response = self._patch('/groups/{group_id}/datasets'.format(group_id=group_id, data=data))
+        response = self._post('/groups/{group_id}/datasets'.format(group_id=group_id), data=data)
 
         if not response.ok:
             print(response.json())
@@ -30,8 +31,8 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--password', required=True)
     parser.add_argument('-P', '--provider', required=True)
     parser.add_argument('-s', '--server', required=True)
-    parser.add_argument('-g', '--group_id', required=True)
-    parser.add_argument('-d', '--dataset_id', required=True)
+    parser.add_argument('-g', '--group-id', required=True)
+    parser.add_argument('-d', '--dataset-id', required=True)
     args = parser.parse_args()
 
     server = ServerPlus(args.server, verify=False)
