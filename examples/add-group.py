@@ -7,10 +7,9 @@ import sys
 
 
 class ServerPlus(Server):
-    """ Extends the functionality of the Server class by adding groups, and datasets. """
 
     def add_group(self, name, capabilities, description=''):
-        """ Given a Group class instance, create it on the server. """
+        """ Add a group. DISCLAIMER: At the time of writing this API was a technical preview. """
 
 
         known_capabilities = ('ANALYTICS', 'DASHBOARDS', 'EDIT_ADMIN', 'EDIT_SHARED', 'INTERNAL', 'INVENTORY', 'STATISTICS', 'VIEW_ADMIN')

@@ -7,12 +7,10 @@ import sys
 
 
 class ServerPlus(Server):
-    """ Extends the functionality of the Server class by adding groups, and
-    datasets. """
 
 
     def add_dataset(self, name, constraints, description=""):
-        """ Given a Dataset class instance, create it on the server. """
+        """ Add a dataset. DISCLAIMER: At the time of writing this API was a technical preview. """
 
         data = DatasetSpec(name=name, description=description, constraints=constraints).json()
         response = server._post('/datasets',data=data)

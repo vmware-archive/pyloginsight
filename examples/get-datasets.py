@@ -8,11 +8,12 @@ import argparse
 
 
 class ServerPlus(Server):
-    """ Extends the functionality of the Server class by adding groups, and datasets. """
 
     @property
     def datasets(self):
-        """ Get a list of datasets and their properties. DISCLAIMER: At the time of writing this API was a technical preview. """
+        """ Get datasets. DISCLAIMER: At the time of writing this API was a technical preview. """
+
+
         datasets = []
         for dataset in self._get('/datasets').json()['dataSets']:
 

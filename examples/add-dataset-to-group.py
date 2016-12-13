@@ -8,10 +8,10 @@ import json
 
 
 class ServerPlus(Server):
-    """ Extends the functionality of the Server class by adding groups, and datasets. """
 
     def add_dataset_to_group(self, dataset_id, group_id):
-        
+        """ Add a dataset to a group. DISCLAIMER: At the time of writing this API was a technical preview. """ 
+
         data = PostGroupIdDatasetSpec(
             group_id = group_id,
             dataset_add_list = [dataset_id],
