@@ -19,24 +19,24 @@
 
 # A "Constraint" consists of (field, operator, value).
 
-from . import Operator
+from . import operator
 from requests.utils import quote
 import warnings
 
 
 class Constraint:
-    def __init__(self, field="text", operator=Operator.CONTAINS, value=""):
+    def __init__(self, field="text", operator=operator.CONTAINS, value=""):
         self.field = field
         self.operator = operator
         self.value = value
 
     def __str__(self):
         """Url-encode each of the arguments, and return a query fragment like `/field/operator value`."""
-        if self.operator in Operator._NUMERIC:
+        if self.operator in operator._NUMERIC:
             self.value = str(int(self.value))
-        if self.operator in Operator._TIME and self.field != 'timestamp':
+        if self.operator in operator._TIME and self.field != 'timestamp':
             raise(ValueError("Time operator '%s' can only be used with the 'timestamp' field." % self.operator))
-        if self.operator in Operator._BOOLEAN:  # Boolean operators don't include a value
+        if self.operator in operator._BOOLEAN:  # Boolean operators don't include a value
             warnings.warn("Attempted to use boolean operator with a value")
             return '/' + quote(self.field, safe="") + '/' + quote(self.operator, safe="")
         else:
@@ -60,3 +60,4 @@ class Query:
     def __init__(self, constraints=None, parameters=None):
         if constraints is None:
             constraints = []
+
