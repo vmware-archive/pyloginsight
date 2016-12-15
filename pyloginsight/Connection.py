@@ -22,6 +22,7 @@ from requests.compat import urlunparse, urlparse
 import collections
 from distutils.version import StrictVersion
 from . import __version__ as version
+import warnings
 
 
 logger = logging.getLogger(__name__)
@@ -68,7 +69,6 @@ class Credentials(requests.auth.AuthBase):
             del prep.headers['Authorization']
 
         prep.prepare_method("post")
-
         p = urlparse(previousresponse.request.url)
         prep.prepare_url(urlunparse([p.scheme,
                                      p.netloc,
@@ -87,13 +87,10 @@ class Credentials(requests.auth.AuthBase):
     def handle_401(self, r, **kwargs):
         # method signature matches requests.Request.register_hook
 
-        # Is it possible for a non-401 to end up here?
-        if r.status_code != 401:
-            logging.warning("Got a non-400 status %d in handle_401" % r.status_code)
+        if r.status_code not in [401, 440]:
             return r
 
-        assert r.status_code == 401
-
+        logging.debug("Not authenticated (got status {r.status_code} @ {r.request.url})".format(r=r))
         r.content  # Drain previous response body, if any
         r.close()
 
@@ -106,7 +103,7 @@ class Credentials(requests.auth.AuthBase):
         _r.history.append(r)
         _r.request = prep
 
-        if _r.status_code == 401:
+        if _r.status_code in [401, 440]:
             raise Unauthorized("Authentication failed", _r)
         logging.debug("Authenticated successfully.")
         return _r
@@ -156,19 +153,27 @@ class Connection(object):
                                       verify=self._verify,
                                       auth=self._authprovider if sendauthorization else None,
                                       params=params)
+        if 'Warning' in r.headers:
+            warnings.warn(r.headers.get('Warning'))
         return r
 
     def _get(self, url, params=None, sendauthorization=True):
-        return self._requestsession.get(self._apiroot + url,
+        r = self._requestsession.get(self._apiroot + url,
+                                     verify=self._verify,
+                                     auth=self._authprovider if sendauthorization else None,
+                                     params=params)
+        if 'Warning' in r.headers:
+            warnings.warn(r.headers.get('Warning'))
+        return r
+
+    def _delete(self, url, params=None, sendauthorization=True):
+        r = self._requestsession.delete(self._apiroot + url,
                                         verify=self._verify,
                                         auth=self._authprovider if sendauthorization else None,
                                         params=params)
-
-    def _delete(self, url, params=None, sendauthorization=True):
-        return self._requestsession.delete(self._apiroot + url,
-                                           verify=self._verify,
-                                           auth=self._authprovider if sendauthorization else None,
-                                           params=params)
+        if 'Warning' in r.headers:
+            warnings.warn(r.headers.get('Warning'))
+        return r
 
     def _put(self, url, data=None, json=None, params=None, sendauthorization=True):
         """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
@@ -178,6 +183,8 @@ class Connection(object):
                                      verify=self._verify,
                                      auth=self._authprovider if sendauthorization else None,
                                      params=params)
+        if 'Warning' in r.headers:
+            warnings.warn(r.headers.get('Warning'))
         return r
 
     def _patch(self, url, data=None, json=None, params=None, sendauthorization=True):
@@ -188,6 +195,8 @@ class Connection(object):
                                        verify=self._verify,
                                        auth=self._authprovider if sendauthorization else None,
                                        params=params)
+        if 'Warning' in r.headers:
+            warnings.warn(r.headers.get('Warning'))
         return r
 
     def __repr__(self):
@@ -235,6 +244,15 @@ class Server(Connection):
         except:
             return True
 
+    @property
+    def current_session(self):
+        resp = self._get("/sessions/current").json()
+        return resp
+
+    @property
+    def license(self):
+        return LicenseKeys(self, "/licenses")
+
     # TODO: Model the server features as properties
 
 
@@ -248,3 +266,59 @@ class ServerDict(collections.MutableMapping):
     """A server-backed dictionary (hashmap) or items, usually keyed by a UUID.
     Adding, deleting or updating an item usually means POST/PUTing a single item's resource."""
     pass
+
+
+class LicenseKeys(collections.MutableMapping):
+    """A server-backed dictionary (hashmap) of items embedded in the
+    Adding, deleting or updating an item usually means POST/PUTing a single item's resource."""
+
+    def __init__(self, connection, baseurl):
+        self._connection = connection
+        self._baseurl = baseurl
+
+    def __delitem__(self, item):
+        resp = self._connection._delete("{0}/{1}".format(self._baseurl, item))
+        if resp.status_code == 200:
+            return True
+        elif resp.status_code == 404:
+            raise KeyError("Unknown license key uuid {0}".format(item))
+        else:
+            raise ValueError(resp.json()['errorMessage'])
+        # TODO: Should raise KeyError on unknown license key.
+
+    def append(self, licensekey):
+        """A list-like interface for addding a new licence.
+        The server will assign a new UUID when inserting into the mapping.
+        A subsequent request to keys/iter will contain the new license in the value."""
+        resp = self._connection._post(self._baseurl, json={"key": licensekey})
+        if resp.status_code in [400, 409, 500]:
+            raise ValueError(resp.json()['errorMessage'])
+        elif resp.status_code == 201:
+            return True
+        raise NotImplementedError("Unhandled status")
+
+    def __getitem__(self, item):
+        """Retrieve details for a license key. Could raise KeyError."""
+        return self._rootobject['licenses'][item]
+
+    def keys(self):
+        return self._rootobject['licenses'].keys()
+
+    def __iter__(self):
+        for key in self.keys():
+            yield key
+
+    def __len__(self):
+        return len(self._rootobject["licenses"])
+
+    def __setitem__(self, key, value):
+        raise NotImplementedError
+
+    @property
+    def _rootobject(self):
+        return self._connection._get(self._baseurl).json()
+
+    @property
+    def summary(self):
+        """Dictionary summarizing installed licenses and active features"""
+        return self._rootobject
