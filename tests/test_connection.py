@@ -1,7 +1,7 @@
 import pytest
 from distutils.version import StrictVersion
 
-from pyloginsight.Connection import Connection, Server, Credentials, Unauthorized
+from pyloginsight.connection import Connection, Server, Credentials, Unauthorized
 import requests_mock
 
 

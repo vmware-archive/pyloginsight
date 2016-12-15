@@ -1,6 +1,6 @@
 import pytest
 from functools import wraps
-from pyloginsight.Connection import Server, Credentials, LicenseKeys
+from pyloginsight.connection import Server, Credentials, LicenseKeys
 import requests_mock
 
 
