@@ -65,7 +65,7 @@ setup(
     license='Apache Software License 2.0',
     author='Alan Castonguay',
     install_requires=['requests', 'ramlfications', 'six', 'jsonschema'],
-    tests_require=["requests_mock", "pytest"],
+    tests_require=["requests_mock", "pytest", "pytest-catchlog", "pytest-flakes", "pytest-pep8"],
     description='VMware vRealize Log Insight Client',
     author_email='acastonguay@vmware.com',
     long_description=open('README.rst').read(),
