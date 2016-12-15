@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 
-from pyloginsight.Connection import Server
+from pyloginsight.models import Server
 from pyloginsight.query import Constraint
 from models import Dataset
 import argparse

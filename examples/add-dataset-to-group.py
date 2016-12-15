@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-from pyloginsight.Connection import Server
-from pyloginsight.query import Constraint
+from pyloginsight.models import Server
 from models import PostGroupIdDatasetSpec
 import argparse
 import json
