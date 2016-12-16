@@ -14,5 +14,5 @@ install:
   - pip install coveralls==1.1
   - python setup.py install
 # command to run tests
-script: py.test --flakes  --cov={envsitepackagesdir}/pyloginsight --cov-config=tox.ini --cov-fail-under=60 --cov-report term-missing
+script: py.test --flakes  --cov=pyloginsight --cov-config=tox.ini --cov-fail-under=60 --cov-report term-missing
 after_success: coveralls
