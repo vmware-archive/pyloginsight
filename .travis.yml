@@ -18,5 +18,5 @@ script:
   - pwd
   - ls
   - set
-  - py.test --flakes --cov --cov-config=tox.ini --cov-fail-under=60 --cov-report term-missing
+  - py.test --flakes --cov=pyloginsight --cov-config=tox.ini --cov-fail-under=60 --cov-report term-missing
 after_success: coveralls
