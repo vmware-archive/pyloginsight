@@ -1,7 +1,7 @@
 import pytest
 import warnings
 from pyloginsight.query import Constraint, Parameter
-from pyloginsight import operator
+from pyloginsight import operators as operator
 
 """Examples from "Specifying constraints" section of https://vmw-loginsight.github.io/#Querying-data"""
 
