@@ -63,6 +63,10 @@ class Server(Connection):
     def license(self):
         return LicenseKeys(self, "/licenses")
 
+    @property
+    def roles(self):
+        return []
+
     # TODO: Model the server features as properties
 
 
@@ -132,4 +136,5 @@ class LicenseKeys(collections.MutableMapping):
     def summary(self):
         """Dictionary summarizing installed licenses and active features"""
         return self._rootobject
+
 
