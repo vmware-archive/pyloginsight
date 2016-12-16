@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from pyloginsight.Connection import Server
+from pyloginsight.models import Server
 from models import Group, Capability
 import argparse
 

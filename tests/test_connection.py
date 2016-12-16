@@ -1,7 +1,8 @@
 import pytest
 from distutils.version import StrictVersion
 
-from pyloginsight.Connection import Connection, Server, Credentials, Unauthorized
+from pyloginsight.connection import Connection, Credentials, Unauthorized
+from pyloginsight.models import Server
 import requests_mock
 
 
@@ -118,22 +119,6 @@ class TestConnection():
 
 
 class TestServer():
-    def test_connection_to_server(self):
-        """
-        A Connection instance carries a .server property which returns a Server object that looks very similar to the Connection
-        """
-
-        credentials = Credentials(username="admin", password="wrongpassword", provider="mock")
-        connection = Connection("mockserver", auth=credentials)
-
-        server = connection.server
-
-        for x in connection.__dict__:
-            assert x in server.__dict__
-            assert server.__dict__[x] == connection.__dict__[x]
-
-        print(credentials)
-        print(connection)
 
     def test_version_number_without_authentication(self):
         """
