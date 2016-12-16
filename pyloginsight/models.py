@@ -65,7 +65,7 @@ class Server(Connection):
 
     @property
     def roles(self):
-        return []
+        return Roles(self)
 
     # TODO: Model the server features as properties
 
@@ -136,5 +136,28 @@ class LicenseKeys(collections.MutableMapping):
     def summary(self):
         """Dictionary summarizing installed licenses and active features"""
         return self._rootobject
+
+
+class Roles(collections.MutableMapping):
+
+    def __init__(self, connection):
+        self._connection = connection
+
+    def __delitem__(self, group_id):
+        raise NotImplementedError
+
+    def __getitem__(self, group_id):
+        raise NotImplementedError
+
+    def __setitem__(self, group_id, value):
+        raise NotImplementedError
+
+    def __iter__(self):
+        raise NotImplementedError
+
+    def __len__(self):
+        raise NotImplementedError
+
+
 
 
