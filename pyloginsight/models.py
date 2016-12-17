@@ -22,7 +22,7 @@ import collections
 from distutils.version import StrictVersion
 from .connection import Connection, Unauthorized, ServerError, Credentials
 import warnings
-
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -179,19 +179,17 @@ class Roles(collections.MutableMapping):
             raise TypeError('Capabilities must contain at least one valid capability.  Capabilities include: {m}.'.format(m=', '.join(good_capabilities)))
 
         try:
-            data = {'name': name, 'description': description, 'capabilities': valid_capabilities}
-            self._connection._post('/groups', data=data)
-            return None
+            data = json.dumps({'name': name, 'description': description, 'capabilities': valid_capabilities})
+            response = self._connection._post('/groups', data=data)
+
+            if not response.ok:
+                if response.status_code == 409:
+                    raise ValueError('A role with the same name value already exists.')
+                else:
+                    raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+            else:
+                return None
 
         except Exception as e:
             import sys
             print(sys.exc_info()[1])
-
-
-
-
-
-
-
-
-
