@@ -68,7 +68,6 @@ def test_append():
         capabilities=['INTERNAL']
     ) is None
 
-
     with pytest.raises(TypeError):
         server.roles.append(
             name=5,
@@ -87,13 +86,18 @@ def test_append():
         server.roles.append(
             name='myrole',
             description='mydescription',
+            capabilities=5
+        )
+
+    with pytest.raises(TypeError):
+        server.roles.append(
+            name='myrole',
+            description='mydescription',
             capabilities=[]
         )
 
-
     with pytest.raises(TypeError):
         server.roles.append(fruit='Raspberry')
-
 
     with pytest.raises(TypeError):
         server.roles.append()
