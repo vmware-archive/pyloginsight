@@ -15,15 +15,14 @@ DELETE_GROUPS_ID='' # response is empty string
 adapter = requests_mock.Adapter()
 adapter.register_uri(method='GET', url='https://mockserver:9543/api/v1/groups', text=GET_GROUPS_ID, status_code=200)
 adapter.register_uri(method='POST', url='https://mockserver:9543/api/v1/groups', text=POST_GROUPS, status_code=200)
+adapter.register_uri(method='GET', url='https://mockserver:9543/api/v1/groups/00000000-0000-0000-0000-000000000001',
+                     text=GET_GROUPS_ID, status_code=200)
 adapter.register_uri(method='POST', url='https://mockserver:9543/api/v1/groups/00000000-0000-0000-0000-000000000001',
-                     text=POST_GROUPS_ID,
-                     status_code=200)
+                     text=POST_GROUPS_ID, status_code=200)
 adapter.register_uri(method='PATCH', url='https://mockserver:9543/api/v1/groups/00000000-0000-0000-0000-000000000001',
-                     text=GET_GROUPS_ID,
-                     status_code=200)
+                     text=GET_GROUPS_ID, status_code=200)
 adapter.register_uri(method='DELETE', url='https://mockserver:9543/api/v1/groups/00000000-0000-0000-0000-000000000001',
-                     text=DELETE_GROUPS_ID,
-                     status_code=200)
+                     text=DELETE_GROUPS_ID, status_code=200)
 
 
 credentials = Credentials(username='admin', password='secret', provider='Local')
@@ -37,8 +36,13 @@ def test_property():
 
 
 def test_getitem():
-    with pytest.raises(NotImplementedError):
-        assert server.roles['00000000-0000-0000-0000-000000000001'] is not None
+    assert type(server.roles['00000000-0000-0000-0000-000000000001']) == dict
+
+    with pytest.raises(TypeError):
+        test_var = server.roles[5]
+
+    #with pytest.raises(SystemError):
+    #    test_var = server.roles['raspberry']
 
 
 def test_setitem():
