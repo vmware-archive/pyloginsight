@@ -169,7 +169,7 @@ class Roles(collections.MutableMapping):
             raise TypeError('The description value must be a string.')
 
         if not type(capabilities) is list:
-            raise TypeError('The description value must be a string.')
+            raise TypeError('The capabilities value must be a list.')
 
         # Ensure we only use valid capabilities.
         good_capabilities = ('ANALYTICS', 'DASHBOARDS', 'EDIT_ADMIN', 'EDIT_SHARED', 'INTERNAL', 'INVENTORY',
