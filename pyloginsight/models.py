@@ -147,7 +147,24 @@ class Roles(collections.MutableMapping):
         raise NotImplementedError
 
     def __getitem__(self, group_id):
-        raise NotImplementedError
+        """ Gets a role. """
+
+        # ensure we are getting valid data types.
+        if type(group_id) is not str:
+            raise TypeError('The group_id value must be a string.')
+
+        try:
+            response = self._connection._get('/groups/{i}'.format(i=group_id))
+            if not response.ok:
+                raise SystemError(
+                    'Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+            else:
+                return response.json()['group']
+
+        except Exception as e:
+            import sys
+            print(sys.exc_info()[1])
+
 
     def __setitem__(self, group_id, value):
         raise NotImplementedError
