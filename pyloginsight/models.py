@@ -161,11 +161,6 @@ class Roles(collections.MutableMapping):
     def append(self, name, description, capabilities):
         """ Creates a role. """
 
-        # Validates known good capabilities.  To my knowledge API does not have an interface for getting capabilities.
-        good_capabilities = ('ANALYTICS', 'DASHBOARDS', 'EDIT_ADMIN', 'EDIT_SHARED', 'INTERNAL', 'INVENTORY',
-                             'STATISTICS', 'VIEW_ADMIN')
-        valid_capabilities = [capability for capability in capabilities if capability in good_capabilities]
-
         # Ensure we are not getting invalid data types.
         if not type(name) is str:
             raise TypeError('The name value must be a string.')
@@ -173,6 +168,13 @@ class Roles(collections.MutableMapping):
         if not type(description) is str:
             raise TypeError('The description value must be a string.')
 
+        if not type(capabilities) is list:
+            raise TypeError('The description value must be a string.')
+
+        # Ensure we only use valid capabilities.
+        good_capabilities = ('ANALYTICS', 'DASHBOARDS', 'EDIT_ADMIN', 'EDIT_SHARED', 'INTERNAL', 'INVENTORY',
+                             'STATISTICS', 'VIEW_ADMIN')
+        valid_capabilities = [capability for capability in capabilities if capability in good_capabilities]
         if not valid_capabilities:
             raise TypeError('Capabilities must contain at least one valid capability.  Capabilities include: {m}.'.format(m=', '.join(good_capabilities)))
 
