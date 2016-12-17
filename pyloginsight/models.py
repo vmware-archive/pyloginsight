@@ -143,37 +143,25 @@ class Roles(collections.MutableMapping):
     def __init__(self, connection):
         self._connection = connection
 
+    @property
+    def _rootobject(self):
+        return {group['id']:group for group in self._connection._get('/groups').json()['groups']}
+
     def __delitem__(self, group_id):
         raise NotImplementedError
 
     def __getitem__(self, group_id):
         """ Gets a role. """
-
-        # ensure we are getting valid data types.
-        if type(group_id) is not str:
-            raise TypeError('The group_id value must be a string.')
-
-        try:
-            response = self._connection._get('/groups/{i}'.format(i=group_id))
-            if not response.ok:
-                raise SystemError(
-                    'Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
-            else:
-                return response.json()['group']
-
-        except Exception as e:
-            import sys
-            print(sys.exc_info()[1])
-
+        return self._rootobject[group_id]
 
     def __setitem__(self, group_id, value):
         raise NotImplementedError
 
     def __iter__(self):
-        raise NotImplementedError
+        return iter(self._rootobject)
 
     def __len__(self):
-        raise NotImplementedError
+        return len(self._rootobject)
 
     def append(self, name, description, capabilities):
         """ Creates a role. """
