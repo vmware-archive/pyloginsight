@@ -13,7 +13,8 @@ DELETE_GROUPS_ID='' # response is empty string
 
 # Added responses to mock server.
 adapter = requests_mock.Adapter()
-adapter.register_uri(method='GET', url='https://mockserver:9543/api/v1/groups/', text=GET_GROUPS_ID, status_code=200)
+adapter.register_uri(method='GET', url='https://mockserver:9543/api/v1/groups', text=GET_GROUPS_ID, status_code=200)
+adapter.register_uri(method='POST', url='https://mockserver:9543/api/v1/groups', text=POST_GROUPS, status_code=200)
 adapter.register_uri(method='POST', url='https://mockserver:9543/api/v1/groups/00000000-0000-0000-0000-000000000001',
                      text=POST_GROUPS_ID,
                      status_code=200)
@@ -58,4 +59,42 @@ def test_iter():
 def test_len():
     with pytest.raises(NotImplementedError):
         test_var = len(server.roles)
+
+
+def test_append():
+    server.roles.append(
+        name='myrole',
+        description='mydescription',
+        capabilities=['INTERNAL']
+    ) is None
+
+
+    with pytest.raises(TypeError):
+        server.roles.append(
+            name=5,
+            description='mydescription',
+            capabilities=[]
+        )
+
+    with pytest.raises(TypeError):
+        server.roles.append(
+            name='myrole',
+            description=5,
+            capabilities=[]
+        )
+
+    with pytest.raises(TypeError):
+        server.roles.append(
+            name='myrole',
+            description='mydescription',
+            capabilities=[]
+        )
+
+
+    with pytest.raises(TypeError):
+        server.roles.append(fruit='Raspberry')
+
+
+    with pytest.raises(TypeError):
+        server.roles.append()
 
