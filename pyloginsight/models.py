@@ -150,23 +150,19 @@ class Roles(collections.MutableMapping):
     def __delitem__(self, group_id):
         """ Deletes a role. """
 
-        try:
-            response = self._connection._delete('/groups/{i}'.format(i=group_id))
+        response = self._connection._delete('/groups/{i}'.format(i=group_id))
 
-            if not response.ok:
-                if response.status_code == 404:
-                    raise KeyError('The specified role does not exist.')
-                elif response.status_code == 409:
-                    raise KeyError('The specified role is required and cannot be deleted.')
-                else:
-                    raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+        if response.ok:
+            return None
+
+        else:
+            if response.status_code == 404:
+                raise KeyError('The specified role does not exist.')
+            elif response.status_code == 409:
+                raise KeyError('The specified role is required and cannot be deleted.')
             else:
-                return None
+                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
 
-        except SystemError:
-            import sys
-            print(sys.exc_info()[1])
-            raise
 
     def __getitem__(self, group_id):
         """ Gets a role. """
@@ -201,19 +197,14 @@ class Roles(collections.MutableMapping):
         if not valid_capabilities:
             raise TypeError('Capabilities must contain at least one valid capability.  Capabilities include: {m}.'.format(m=', '.join(good_capabilities)))
 
-        try:
-            data = json.dumps({'name': name, 'description': description, 'capabilities': valid_capabilities})
-            response = self._connection._post('/groups', data=data)
+        data = json.dumps({'name': name, 'description': description, 'capabilities': valid_capabilities})
+        response = self._connection._post('/groups', data=data)
 
-            if not response.ok:
-                if response.status_code == 409:
-                    raise ValueError('A role with the same name value already exists.')
-                else:
-                    raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+        if not response.ok:
+            if response.status_code == 409:
+                raise ValueError('A role with the same name value already exists.')
             else:
-                return None
+                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+        else:
+            return None
 
-        except SystemError:
-            import sys
-            print(sys.exc_info()[1])
-            raise
