@@ -11,6 +11,9 @@ GET_GROUPS_ID_404 = '{"errorMessage":"Specified group does not exist.","errorCod
 POST_GROUPS_ID = ''  # response is empty string
 PATCH_GROUPS_ID = ''  # response is empty string
 DELETE_GROUPS_ID='' # response is empty string
+DELETE_GROUPS_ID_409 = '{"errorMessage":"Specified group is required.","errorCode":"RBAC_GROUPS_ERROR","errorDetails":{"errorCode":"com.vmware.loginsight.api.errors.rbac.group_is_required"}}'
+DELETE_GROUPS_ID_404 = '{"errorMessage":"Specified group does not exist.","errorCode":"RBAC_GROUPS_ERROR","errorDetails":{"errorCode":"com.vmware.loginsight.api.errors.rbac.group_does_not_exist"}}'
+
 
 
 # Added responses to mock server.
@@ -28,6 +31,10 @@ adapter.register_uri(method='POST', url='https://mockserver:9543/api/v1/groups/0
 adapter.register_uri(method='PATCH', url='https://mockserver:9543/api/v1/groups/00000000-0000-0000-0000-000000000001',
                      text=GET_GROUPS_ID, status_code=200)
 adapter.register_uri(method='DELETE', url='https://mockserver:9543/api/v1/groups/00000000-0000-0000-0000-000000000001',
+                     text=DELETE_GROUPS_ID_409, status_code=409)
+adapter.register_uri(method='DELETE', url='https://mockserver:9543/api/v1/groups/00000000-0000-0000-0000-000000000025',
+                     text=DELETE_GROUPS_ID_404, status_code=404)
+adapter.register_uri(method='DELETE', url='https://mockserver:9543/api/v1/groups/00000000-0000-0000-0000-000000000004',
                      text=DELETE_GROUPS_ID, status_code=200)
 
 
@@ -64,7 +71,12 @@ def test_setitem():
 
 
 def test_delitem():
-    with pytest.raises(NotImplementedError):
+    assert server.roles.pop('00000000-0000-0000-0000-000000000004', None) is None
+
+    with pytest.raises(KeyError):
+        server.roles.pop('00000000-0000-0000-0000-000000000025')
+
+    with pytest.raises(KeyError):
         server.roles.pop('00000000-0000-0000-0000-000000000001', None)
 
 
