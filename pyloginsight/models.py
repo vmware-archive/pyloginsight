@@ -152,7 +152,10 @@ class Datasets(collections.MutableMapping):
         if response.ok:
             pass
         else:
-            raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+            if response.status_code == 400:
+                raise KeyError('The specified data set does not exist.')
+            else:
+                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
 
     def __getitem__(self, key):
         return self._rootobject[key]
@@ -167,6 +170,11 @@ class Datasets(collections.MutableMapping):
         return iter(self._rootobject)
 
     def append(self, name, description, field, value):
+
+        if type(name) == str and type(description) == str and type(field) == str and type(value) == str:
+            pass
+        else:
+            raise TypeError('The name, description, field, and value should be string types.')
 
         constraints = [{'name': field, 'operator': 'CONTAINS', 'value': value, 'fieldType': 'STRING'}]
         data = json.dumps({'name': name, 'description': description, 'constraints': constraints})
