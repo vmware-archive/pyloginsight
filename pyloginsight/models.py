@@ -148,7 +148,28 @@ class Roles(collections.MutableMapping):
         return {group['id']:group for group in self._connection._get('/groups').json()['groups']}
 
     def __delitem__(self, group_id):
-        raise NotImplementedError
+        """ Deletes a role. """
+
+        if type(group_id) is not str:
+            raise TypeError('The group_id value must be a string.')
+
+        try:
+            response = self._connection._delete('/groups/{i}'.format(i=group_id))
+
+            if not response.ok:
+                if response.status_code == 404:
+                    raise KeyError('The specified role does not exist.')
+                elif response.status_code == 409:
+                    raise KeyError('The specified role is required and cannot be deleted.')
+                else:
+                    raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+            else:
+                return None
+
+        except Exception as e:
+            import sys
+            print(sys.exc_info()[1])
+            raise e
 
     def __getitem__(self, group_id):
         """ Gets a role. """
