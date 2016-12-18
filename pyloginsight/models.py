@@ -67,6 +67,10 @@ class Server(Connection):
     def roles(self):
         return Roles(self)
 
+    @property
+    def datasets(self):
+        return Datasets(self)
+
     # TODO: Model the server features as properties
 
 
@@ -136,6 +140,58 @@ class LicenseKeys(collections.MutableMapping):
     def summary(self):
         """Dictionary summarizing installed licenses and active features"""
         return self._rootobject
+
+
+class Datasets(collections.MutableMapping):
+
+    def __init__(self, connection):
+        self._connection = connection
+
+    @property
+    def _rootobject(self):
+        return {dataset['id']: dataset for dataset in self._connection._get('/datasets').json()['dataSets']}
+
+    def __delitem__(self, key):
+        response = self._connection._delete('/datasets/{i}'.format(i=key))
+        if response.ok:
+            pass
+        else:
+            if response.status_code == 400:
+                raise KeyError('The specified data set does not exist.')
+            else:
+                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+
+    def __getitem__(self, key):
+        return self._rootobject[key]
+
+    def __setitem__(self, key, value):
+        raise NotImplementedError
+
+    def __len__(self):
+        return len(self._rootobject)
+
+    def __iter__(self):
+        return iter(self._rootobject)
+
+    def append(self, name, description, field, value):
+
+        if type(name) == str and type(description) == str and type(field) == str and type(value) == str:
+            pass
+        else:
+            raise TypeError('The name, description, field, and value should be string types.')
+
+        constraints = [{'name': field, 'operator': 'CONTAINS', 'value': value, 'fieldType': 'STRING'}]
+        data = json.dumps({'name': name, 'description': description, 'constraints': constraints})
+        response = self._connection._post('/datasets', data=data)
+
+        if response.ok:
+            return None
+
+        else:
+            if response.status_code == 400:
+                raise TypeError(response.text)
+            else:
+                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
 
 
 class Roles(collections.MutableMapping):
