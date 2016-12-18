@@ -150,9 +150,6 @@ class Roles(collections.MutableMapping):
     def __delitem__(self, group_id):
         """ Deletes a role. """
 
-        if type(group_id) is not str:
-            raise TypeError('The group_id value must be a string.')
-
         try:
             response = self._connection._delete('/groups/{i}'.format(i=group_id))
 
@@ -166,10 +163,10 @@ class Roles(collections.MutableMapping):
             else:
                 return None
 
-        except Exception as e:
+        except SystemError:
             import sys
             print(sys.exc_info()[1])
-            raise e
+            raise
 
     def __getitem__(self, group_id):
         """ Gets a role. """
@@ -216,6 +213,7 @@ class Roles(collections.MutableMapping):
             else:
                 return None
 
-        except Exception as e:
+        except SystemError:
             import sys
             print(sys.exc_info()[1])
+            raise
