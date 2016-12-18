@@ -10,10 +10,9 @@ GET_GROUPS_ID_400 = '{"errorMessage":"Bad request received (Cannot parse paramet
 GET_GROUPS_ID_404 = '{"errorMessage":"Specified group does not exist.","errorCode":"RBAC_GROUPS_ERROR","errorDetails":{"errorCode":"com.vmware.loginsight.api.errors.rbac.group_does_not_exist"}}'
 POST_GROUPS_ID = ''  # response is empty string
 PATCH_GROUPS_ID = ''  # response is empty string
-DELETE_GROUPS_ID='' # response is empty string
+DELETE_GROUPS_ID = '' # response is empty string
 DELETE_GROUPS_ID_409 = '{"errorMessage":"Specified group is required.","errorCode":"RBAC_GROUPS_ERROR","errorDetails":{"errorCode":"com.vmware.loginsight.api.errors.rbac.group_is_required"}}'
 DELETE_GROUPS_ID_404 = '{"errorMessage":"Specified group does not exist.","errorCode":"RBAC_GROUPS_ERROR","errorDetails":{"errorCode":"com.vmware.loginsight.api.errors.rbac.group_does_not_exist"}}'
-
 
 
 # Added responses to mock server.
@@ -56,13 +55,13 @@ def test_getitem():
         'ANALYTICS', 'DASHBOARDS', 'EDIT_ADMIN', 'EDIT_SHARED', 'INTERNAL', 'INVENTORY', 'STATISTICS', 'VIEW_ADMIN')
 
     with pytest.raises(KeyError):
-        test_var = server.roles[5]
+        print(server.roles[5])
 
     with pytest.raises(KeyError):
-        test_var = server.roles['raspberry']
+        print(server.roles['raspberry'])
 
     with pytest.raises(KeyError):
-        test_var = server.roles['00000000-0000-0000-0000-000000000025']
+        print(server.roles['00000000-0000-0000-0000-000000000025'])
 
 
 def test_setitem():
@@ -83,7 +82,7 @@ def test_delitem():
 def test_iter():
     assert type([k for k in server.roles.keys()][0]) == str
     assert type([v for v in server.roles.values()][0]) == dict
-    assert type([k for (k,v) in server.roles.items()][0]) == str
+    assert type([k for (k, v) in server.roles.items()][0]) == str
 
 
 def test_len():
@@ -130,4 +129,3 @@ def test_append():
 
     with pytest.raises(TypeError):
         server.roles.append()
-
