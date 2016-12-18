@@ -64,6 +64,10 @@ class Server(Connection):
         return LicenseKeys(self, "/licenses")
 
     @property
+    def roles(self):
+        return Roles(self)
+
+    @property
     def datasets(self):
         return Datasets(self)
 
@@ -186,5 +190,77 @@ class Datasets(collections.MutableMapping):
         else:
             if response.status_code == 400:
                 raise TypeError(response.text)
+            else:
+                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+
+
+class Roles(collections.MutableMapping):
+
+    def __init__(self, connection):
+        self._connection = connection
+
+    @property
+    def _rootobject(self):
+        return {group['id']:group for group in self._connection._get('/groups').json()['groups']}
+
+    def __delitem__(self, group_id):
+        """ Deletes a role. """
+
+        response = self._connection._delete('/groups/{i}'.format(i=group_id))
+
+        if response.ok:
+            pass
+
+        else:
+            if response.status_code == 404:
+                raise KeyError('The specified role does not exist.')
+            elif response.status_code == 409:
+                raise KeyError('The specified role is required and cannot be deleted.')
+            else:
+                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+
+
+    def __getitem__(self, group_id):
+        """ Gets a role. """
+        return self._rootobject[group_id]
+
+    def __setitem__(self, group_id, value):
+        raise NotImplementedError
+
+    def __iter__(self):
+        return iter(self._rootobject)
+
+    def __len__(self):
+        return len(self._rootobject)
+
+    def append(self, name, description, capabilities):
+        """ Creates a role. """
+
+        # Ensure we are not getting invalid data types.
+        if not type(name) is str:
+            raise TypeError('The name value must be a string.')
+
+        if not type(description) is str:
+            raise TypeError('The description value must be a string.')
+
+        if not type(capabilities) is list:
+            raise TypeError('The capabilities value must be a list.')
+
+        # Ensure we only use valid capabilities.
+        good_capabilities = ('ANALYTICS', 'DASHBOARDS', 'EDIT_ADMIN', 'EDIT_SHARED', 'INTERNAL', 'INVENTORY',
+                             'STATISTICS', 'VIEW_ADMIN')
+        valid_capabilities = [capability for capability in capabilities if capability in good_capabilities]
+        if not valid_capabilities:
+            raise TypeError('Capabilities must contain at least one valid capability.  Capabilities include: {m}.'.format(m=', '.join(good_capabilities)))
+
+        data = json.dumps({'name': name, 'description': description, 'capabilities': valid_capabilities})
+        response = self._connection._post('/groups', data=data)
+
+        if response.ok:
+            pass
+
+        else:
+            if response.status_code == 409:
+                raise ValueError('A role with the same name value already exists.')
             else:
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
