@@ -1,15 +1,9 @@
 import pytest
-from functools import wraps
-from pyloginsight.connection import Credentials
-from pyloginsight.models import Server, AlternateLicenseKeys
-import requests_mock
-
-from mockserver import mock_server_with_authenticated_connection
+from pyloginsight.models import Server, AlternateLicenseKeys, AlternateVersion
+import logging
 
 
-@pytest.fixture
-def connection():
-    return mock_server_with_authenticated_connection()
+logger = logging.getLogger(__name__)
 
 
 def test_retrieve_license_list_demands_authentication(connection):
@@ -19,7 +13,7 @@ def test_retrieve_license_list_demands_authentication(connection):
     # This test must be altered if it is to be used against a live server.
     mockserver = connection._requestsession.adapters['https://']
 
-    assert len(mockserver.sessions_known) == 0  # No logged in users
+    previous_quantity = len(mockserver.sessions_known)
 
     assert mockserver.call_count == 0
     licenseobject = AlternateLicenseKeys(connection)
@@ -27,7 +21,7 @@ def test_retrieve_license_list_demands_authentication(connection):
 
     assert mockserver.call_count == 3  # Three requests: /licenses=401, /sessions=200, /licenses=200
 
-    assert len(mockserver.sessions_known) == 1  # 1 logged in user, me
+    assert len(mockserver.sessions_known) == previous_quantity + 1  # 1 logged in user, me
     assert MY_USER_ID in mockserver.session_inspection_user_list()
     assert MY_USER_ID == Server.copy_connection(connection).current_session['userId']
 
@@ -59,7 +53,7 @@ def test_remove_nonexistent_license(connection):
 def test_iterate_over_licenses(connection):
     licenseobject = AlternateLicenseKeys(connection)
     counter = 0
-    for k,v in licenseobject.items():
+    for k, v in licenseobject.items():
         assert k == v.id
         assert hasattr(v, "licenseKey")
         counter += 1
@@ -70,5 +64,44 @@ def test_iterate_over_licenses(connection):
 def test_get_license_summary(connection):
     """Retrive license summary, verify it contains a `hasOsi` boolean"""
     licenseobject = AlternateLicenseKeys(connection)
-    summary = licenseobject.summary
-    assert type(summary['hasOsi']) == bool
+    assert isinstance(licenseobject.asdict().get('hasOsi'), bool)
+    assert isinstance(licenseobject()['hasOsi'], bool)
+    assert isinstance(licenseobject.hasCpu, bool)
+    assert isinstance(licenseobject.hasOsi, bool)
+
+
+def test_get_version(connection):
+    from distutils.version import StrictVersion
+    remoteversionobject = AlternateVersion(connection)
+
+    # object's asdict() method produces the server-sent JSON document as a dictionary
+    assert "releaseName" in remoteversionobject.asdict()
+
+    # explicitly-defined @property convenience interfaces provided directly on class
+    assert hasattr(remoteversionobject, "raw")
+    assert "raw" in dir(remoteversionobject)
+
+    # dynamic properties provided by __dir__ and __getattr__, so dict() and hasattr() agree
+    assert hasattr(remoteversionobject, "releaseName")
+    assert "releaseName" in dir(remoteversionobject)
+    with pytest.raises(TypeError):  # dynamic properties are not slice-accessible; that's reserved for the collections mixins
+        _ = remoteversionobject["releaseName"]
+
+    # callable produces a StrictVersion object
+    version = remoteversionobject()
+    print(dir(version))
+
+    assert isinstance(version, StrictVersion)
+    assert version > StrictVersion("0.0")
+
+
+def test_ServerDictMixin_incompatible_with_ServerListMixin(connection):
+    """Try (and fail) to use the ServerDictMixin and ServerListMixin together."""
+    from pyloginsight.abstracts import ServerAddressableObject, ServerDictMixin, ServerListMixin
+
+    class ImpossibleObject(ServerAddressableObject, ServerDictMixin, ServerListMixin):
+        _baseurl = None
+        pass
+
+    with pytest.raises(TypeError):
+        ImpossibleObject(None)

@@ -16,19 +16,22 @@ def adapter():
     mockadapter = requests_mock.Adapter()
     return mockadapter
 
+
 @pytest.fixture
 def connection():
     credentials = Credentials(username="admin", password="pass", provider="mock")
-    connection = Server("mockserver", auth=credentials)
+    connection = Server("mockserverlocal", auth=credentials)
     return connection
+
 
 @pytest.fixture
 def authenticatedconnection():
     credentials = Credentials(username="admin", password="pass", provider="mock")
-    connection = Server("mockserver", auth=credentials)
+    connection = Server("mockserverlocal", auth=credentials)
     connection._requestsession.mount('https://', adapter)
     connection._get("/sessions/current")
     return connection
+
 
 def requiresauthentication(fn):
     """Server mock; fail any request which does not contain the expected Authorization header with HTTP/401.
@@ -41,17 +44,19 @@ def requiresauthentication(fn):
         return fn(request, context)
     return wrapper
 
+
 def test_retrieve_license_list_requires_authentication(adapter, connection):
     adapter_sessions = adapter.register_uri('POST',
-                                            'https://mockserver:9543/api/v1/sessions',
+                                            '/api/v1/sessions',
                                             text=SUCCESSFUL_LOGIN_JSON,
                                             status_code=200)
+
     @requiresauthentication
     def callback_list_license(request, context):
         return LICENSE_LIST_JSON
 
     license_list = adapter.register_uri('GET',
-                                        'https://mockserver:9543/api/v1/licenses',
+                                        '/api/v1/licenses',
                                         status_code=200,
                                         text=callback_list_license)
 
@@ -59,76 +64,6 @@ def test_retrieve_license_list_requires_authentication(adapter, connection):
 
     licenseobject = LicenseKeys(connection, "/licenses")
     assert license_list.call_count == 0  # merely taking the reference doesn't require a server connection
-    assert len(licenseobject) == 1 # server/fixture knows about one existing license key
+    assert len(licenseobject) == 1  # server/fixture knows about one existing license key
     assert license_list.call_count == 2  # one request received a HTTP/401, second HTTP/200 and a payload
     assert adapter_sessions.call_count == 1  # we had to login
-
-
-
-
-def other():
-
-    @requiresauthentication
-    def callback_new_license(request, context):
-        assert request.json()['key'] == NEW_LICENSE_KEY
-        return ""
-
-    new_license = adapter.register_uri("POST",
-                                       'https://mockserver:9543/api/v1/licenses',
-                                       status_code=201,
-                                       text=callback_new_license)
-
-    delete_license = adapter.register_uri('DELETE',
-                                          'https://mockserver:9543/api/v1/licenses/' + EXISTING_LICENSE_UUID,
-                                          status_code=200)
-
-    delete_license_unknown = adapter.register_uri('DELETE',
-                                                  'https://mockserver:9543/api/v1/licenses/unknownkey',
-                                                  text='{"errorMessage":"fake"}',
-                                                  status_code=404)
-
-    credentials = Credentials(username="admin", password="pass", provider="mock")
-    connection = Server("mockserver", auth=credentials)
-
-    connection._requestsession.mount('https://', adapter)
-
-    licenseobject = LicenseKeys(connection, "/licenses")
-    assert license_list.call_count == 0  # merely taking the reference doesn't require a server connection
-
-    assert len(licenseobject) == 1  # server/fixture knows about one existing license key
-    assert license_list.call_count == 2  # one returned 401, second returned 200 with the list
-
-    k = list(licenseobject.keys())
-    assert [EXISTING_LICENSE_UUID] == k
-
-    assert license_list.call_count == 3  # +1
-
-    licenseobject.get(EXISTING_LICENSE_UUID)
-    assert license_list.call_count == 4  # +1
-
-    with pytest.raises(KeyError):
-        del licenseobject["unknownkey"]  # mock special-cases this key for deletion-failure w/ 404
-    assert delete_license_unknown.call_count == 1
-
-    del licenseobject[EXISTING_LICENSE_UUID]  # mock does not implement deletion, this succeeds without side-effects
-
-    licenseobject.append(NEW_LICENSE_KEY)
-    assert new_license.call_count == 1
-    assert delete_license.call_count == 1
-
-    summary = licenseobject.summary
-    assert license_list.call_count == 5  # summary invokes a request
-    assert summary.get('hasOsi')
-    assert license_list.call_count == 5  # getting an key from summary doesn't involve a request
-
-    # iterating over a dict-like license object produces all the UUID keys, in one request
-    for uuid in licenseobject:
-        pass
-    assert license_list.call_count == 6
-
-    # iterating over a dict-like license object with .items() produces all the UUID keys and Values, in Two requests
-    for uuid, dictvalue in licenseobject.items():
-        pass
-    assert license_list.call_count == 8
-
-    assert adapter_sessions.call_count == 1  # only one authentication took place

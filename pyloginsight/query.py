@@ -60,4 +60,3 @@ class Query:
     def __init__(self, constraints=None, parameters=None):
         if constraints is None:
             constraints = []
-

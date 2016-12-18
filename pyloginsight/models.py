@@ -22,6 +22,7 @@ import collections
 from distutils.version import StrictVersion
 from .connection import Connection, Unauthorized, ServerError, Credentials
 import warnings
+from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
 
 
 logger = logging.getLogger(__name__)
@@ -64,18 +65,6 @@ class Server(Connection):
         return LicenseKeys(self, "/licenses")
 
     # TODO: Model the server features as properties
-
-
-class ServerList(collections.Sequence):
-    """A server-backed list of items. Can be appended to, sliced, etc.
-    Updating an item in the list usually means POST/PUTing a full new list."""
-    pass
-
-
-class ServerDict(collections.MutableMapping):
-    """A server-backed dictionary (hashmap) or items, usually keyed by a UUID.
-    Adding, deleting or updating an item usually means POST/PUTing a single item's resource."""
-    pass
 
 
 class LicenseKeys(collections.MutableMapping):
@@ -134,96 +123,34 @@ class LicenseKeys(collections.MutableMapping):
         return self._rootobject
 
 
-class AppendableDictMixin(object):
-    def append(self, value):
-        """
-        A list-like interface for adding a new item to a server-backed collection.
-        The server will assign a new UUID when inserting into the mapping.
-        A subsequent request to keys/iter will contain the new item.
-        """
-        resp = self._connection._post(self._baseurl, json=self._createspec(value)._asdict())
-        if resp.status_code in [400, 409, 500]:
-            raise ValueError(resp.json()['errorMessage'])
-        elif resp.status_code == 201:
-            return True
-        try:
-            raise ServerError(resp.status_code, resp.json()['errorMessage'])
-        except KeyError:
-            raise ServerError(resp.status_code, resp.text)
-
-
-class ServerDictMixin(collections.MutableMapping):
-    """
-    A server-backed dictionary of items.
-    Deleting or updating an item usually means DELETE/PUTing a single item's resource.
-    Produces items as dynamic subclass of collections.namedtuple.
-    Frequently used along with `AppendableDictMixin`
-    """
-    def __delitem__(self, item):
-        resp = self._connection._delete("{0}/{1}".format(self._baseurl, item))
-        if resp.status_code == 200:
-            return True
-        elif resp.status_code == 404:
-            raise KeyError("Unknown license key uuid {0}".format(item))
-        else:
-            raise ServerError(resp.json()['errorMessage'])
-        # TODO: Should raise KeyError on unknown license key.
-
-    def __getitem__(self, item):
-        """
-        Retrieve details for a single item from the summary of all items. Could raise KeyError.
-        If `_fromserver()` is defined, call it to instantiate an object. Otherwise, produce a collections.namedtuple"""
-        x = self._rootobject[item]
-        if hasattr(self, "_fromserver"):
-            return self._fromserver(**x)
-        else:
-            return collections.namedtuple(self.__class__.__name__, x.keys())(**x)
-
-    def keys(self):
-        return self._rootobject.keys()
-
-    def __iter__(self):
-        for key in self.keys():
-            yield key
-
-    def __len__(self):
-        return len(self._rootobject)
-
-    def __setitem__(self, key, value):
-        raise NotImplementedError
-
-import abc
-
-ABC = abc.ABCMeta('ABC', (object,), {})
-
-class ServerAddressableCollection(ABC):
-    def __init__(self, connection):
-        self._connection = connection
-
-    @property
-    @abc.abstractmethod
-    def _baseurl(self):
-        """Path to the server-hosted object collection root. Must be implemented by child classes. For example, `_baseurl='/licenses'`."""
-        raise NotImplementedError
-
-    @property
-    def _rootobject(self):
-        """
-        How to navigate from the top-level container summary to a list/dict of child items.
-        Defaults to the whole top-level; override in child class.
-        """
-        return self.summary
-
-    @property
-    def summary(self):
-        """GET against the collection's base url, producing a collection-specific summary. Used as the basis for all getters/iterators."""
-        return self._connection._get(self._baseurl).json()
-
-class AlternateLicenseKeys(ServerAddressableCollection, AppendableDictMixin, ServerDictMixin):
+class AlternateLicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/licenses"
     _fromserver = collections.namedtuple("License", ("id", "error", "status", "configuration", "expiration", "licenseKey", "infinite", "count", "typeEnum"))
-    _createspec = collections.namedtuple("License", ("key",))
+
+    class _createspec(object):
+        def __init__(self, key):
+            self.key = key
+
+        def _asdict(self):
+            return {"key": self.key}
 
     @property
-    def _rootobject(self):
-        return self.summary['licenses']
+    def _iterable(self):
+        return self.asdict().get("licenses")
+
+
+class AlternateVersion(ServerAddressableObject):
+    _baseurl = "/version"
+
+    def __call__(self):
+        # The "version number" contains build-flags (e.g., build number, "TP") after the dash; ignore them
+        # 1.2.3-build.flag.names
+        return StrictVersion(self.asdict().get("version").split("-", 1)[0])
+
+    @property
+    def build(self):
+        return int(self.asdict().get("version").split("-", 1)[1])
+
+    @property
+    def raw(self):
+        return self.asdict().get("version")
