@@ -1,44 +1,10 @@
 #!/usr/bin/env python
 
 
-from pyloginsight.models import Server
-from pyloginsight.query import Constraint
-from models import Dataset
 import argparse
+import pprint
 
-
-class ServerPlus(Server):
-
-    @property
-    def datasets(self):
-        """ Get datasets. DISCLAIMER: At the time of writing this API was a technical preview. """
-
-
-        datasets = []
-        for dataset in self._get('/datasets').json()['dataSets']:
-
-            constraints = []
-            for constraint in dataset['constraints']:
-                constraints.append(
-                    Constraint(
-                        field=constraint['name'],
-                        operator=constraint['operator'],
-                        value=constraint['value']
-                    )
-                )
-
-            datasets.append(
-                Dataset(
-                    id=dataset['id'],
-                    name=dataset['name'],
-                    description=dataset['description'],
-                    type=dataset['type'],
-                    constraints=constraints
-                )
-            )
-
-        return datasets
-
+from pyloginsight.models import Server, Credentials
 
 if __name__ == "__main__":
 
@@ -49,8 +15,8 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--server', required=True)
     args = parser.parse_args()
 
-    server = ServerPlus(args.server, verify=False)
-    server.login(username=args.username, password=args.password, provider=args.provider)
+    creds = Credentials(username=args.username, password=args.password, provider=args.provider)
+    server = Server(hostname=args.server, verify=False, auth=creds)
 
-    print('\n'.join([str(dataset) for dataset in server.datasets]))
+    pprint.pprint({k: v for (k, v) in server.datasets.items()})
 
