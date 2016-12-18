@@ -153,7 +153,7 @@ class Roles(collections.MutableMapping):
         response = self._connection._delete('/groups/{i}'.format(i=group_id))
 
         if response.ok:
-            return None
+            pass
 
         else:
             if response.status_code == 404:
@@ -200,11 +200,11 @@ class Roles(collections.MutableMapping):
         data = json.dumps({'name': name, 'description': description, 'capabilities': valid_capabilities})
         response = self._connection._post('/groups', data=data)
 
-        if not response.ok:
+        if response.ok:
+            pass
+
+        else:
             if response.status_code == 409:
                 raise ValueError('A role with the same name value already exists.')
             else:
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
-        else:
-            return None
-
