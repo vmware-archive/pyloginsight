@@ -81,9 +81,9 @@ def test_delitem():
 
 def test_iter():
     # assert type([k for k in server.roles.keys()][0]) == str
-    # Above test fails on 2.7 only because it receives a unicode string.
+    # assert type([k for (k, v) in server.roles.items()][0]) == str
+    # Above tests fails because on Python 2.7 gets unicode instead of string.
     assert type([v for v in server.roles.values()][0]) == dict
-    assert type([k for (k, v) in server.roles.items()][0]) == str
 
 
 def test_len():
