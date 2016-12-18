@@ -16,4 +16,4 @@ if __name__ == "__main__":
     creds = Credentials(username=args.username, password=args.password, provider=args.provider)
     server = Server(hostname=args.server, verify=False, auth=creds)
 
-    pprint.pprint({k:v for (k, v) in server.roles.items()})
+    pprint.pprint({k: v for (k, v) in server.roles.items()})

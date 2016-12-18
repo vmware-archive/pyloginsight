@@ -21,5 +21,3 @@ if __name__ == "__main__":
     server = Server(hostname=args.server, verify=False, auth=creds)
 
     server.roles.append(name=args.name, description=args.description, capabilities=args.capabilities)
-
-
