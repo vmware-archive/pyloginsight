@@ -10,6 +10,10 @@ install:
   - pip install pytest-flakes==1.0.1
   - pip install pytest-pep8==1.0.6
   - pip install requests_mock==1.1.0
-  - python setup.py install
+  - pip install pytest-cov==2.4.0
+  - pip install coveralls==1.1
+  - python setup.py develop
 # command to run tests
-script: py.test --flakes  #--pep8
+script:
+  - py.test --flakes --cov=pyloginsight --cov-config=tox.ini --cov-fail-under=60 --cov-report term-missing
+after_success: coveralls
