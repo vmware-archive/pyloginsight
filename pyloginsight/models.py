@@ -20,7 +20,7 @@ from distutils.version import StrictVersion
 from .connection import Connection, Credentials
 import logging
 import collections
-from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
+from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin
 import json
 
 
@@ -222,7 +222,7 @@ class Roles(collections.MutableMapping):
 
     @property
     def _rootobject(self):
-        return {group['id']:group for group in self._connection._get('/groups').json()['groups']}
+        return {group['id']: group for group in self._connection._get('/groups').json()['groups']}
 
     def __delitem__(self, group_id):
         """ Deletes a role. """
@@ -239,7 +239,6 @@ class Roles(collections.MutableMapping):
                 raise KeyError('The specified role is required and cannot be deleted.')
             else:
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
-
 
     def __getitem__(self, group_id):
         """ Gets a role. """

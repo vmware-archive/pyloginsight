@@ -15,8 +15,9 @@ usemockserver = True
 useliveserver = False
 useinternet = False
 
-live_server None
-# live_server = ConnectionContainer(Connection, "real.server.example.com", Credentials("admin", "secret", "Local"), False)
+live_server = ConnectionContainer(Connection, "real.server.example.com", Credentials("admin", "secret", "Local"), False)
+live_server = None  # Disable entirely unless desired; consider making a pytest argument
+
 
 def pytest_generate_tests(metafunc):
     """Called by pytest to parametize tests."""

@@ -2,9 +2,8 @@
 
 import logging
 import collections
-from .connection import Connection, Unauthorized, ServerError, Credentials
+from .connection import ServerError  # Consider refactoring exceptions out of the `connection` module
 import abc
-import warnings
 
 logger = logging.getLogger(__name__)
 ABC = abc.ABCMeta('ABC', (object,), {})
@@ -181,5 +180,3 @@ class ServerAddressableObject(ABC):
         if name in t:
             return t[name]
         raise AttributeError(name)
-
-import sys
