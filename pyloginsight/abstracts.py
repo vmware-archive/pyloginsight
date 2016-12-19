@@ -151,7 +151,6 @@ class ServerAddressableObject(ABC):
             raise TypeError("ServerDictMixin and ServerListMixin are mutually-exclusive concepts. They both try to define __iter__")
 
     def __get__(self, obj, objtype):
-        print("__get__ called")
         if callable(self):
             self.__init__(obj)
             return self()
@@ -159,7 +158,7 @@ class ServerAddressableObject(ABC):
             raise AttributeError("Cannot retrieve {0} from {1}".format(self.__class__.__name__, objtype.__name__))
 
     def __set__(self, obj, value):
-        raise AttributeError("Cannot set")
+        raise AttributeError()
 
     @property
     @abc.abstractmethod
