@@ -66,6 +66,12 @@ def pytest_generate_tests(metafunc):
             credentialled_connections['fake'] + credentialled_connections['none'],
             ids=identifiers_for_test_parameters)
 
+    if 'all_credential_connection' in metafunc.fixturenames:
+        metafunc.parametrize(
+            "all_credential_connection",
+            credentialled_connections['fake'] + credentialled_connections['none'] + credentialled_connections['good'],
+            ids=identifiers_for_test_parameters)
+
 
 def identifiers_for_test_parameters(val):
     return str(val).replace(".", "_")

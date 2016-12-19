@@ -14,8 +14,3 @@ def test_retrieve_current_session_unauthorized(wrong_credential_connection):
     s = Server.copy_connection(wrong_credential_connection)
     with pytest.raises(Unauthorized) as excinfo:
         discard = s.current_session
-
-
-def test_retrieve_version_successful_without_credentials(wrong_credential_connection):
-    s = Server.copy_connection(wrong_credential_connection)
-    discard = s.version

@@ -27,53 +27,6 @@ import json
 logger = logging.getLogger(__name__)
 
 
-class Server(Connection):
-    """High-level object representing the capabilities of a remote Log Insight server"""
-
-    @property
-    def version(self):
-        """Version number of remote server as a :py:class:: distutils.version.StrictVersion"""
-        resp = self._get("/version").json()
-
-        # The "version number" contains build-flags (e.g., build number, "TP") after the dash; ignore them
-        # 1.2.3-build.flag.names
-        parts = resp.get("version").split("-", 1)
-        return StrictVersion(parts[0])
-
-    def login(self, username, password, provider):
-        # TODO: Should this attempt to use the credentials?
-        self._authprovider = Credentials(username=username, password=password, provider=provider)
-
-    @property
-    def is_bootstrapped(self):
-        """Convenience function for interogating a server to determine whether it's been bootstrapped already."""
-        raise NotImplementedError("TODO: Determine whether the server is already bootstrapped")
-        try:
-            self.post("/deployment/new")
-            return False
-        except:
-            return True
-
-    @property
-    def current_session(self):
-        resp = self._get("/sessions/current").json()
-        return resp
-
-    @property
-    def license(self):
-        return LicenseKeys(self, "/licenses")
-
-    @property
-    def roles(self):
-        return Roles(self)
-
-    @property
-    def datasets(self):
-        return Datasets(self)
-
-    # TODO: Model the server features as properties
-
-
 class LicenseKeys(collections.MutableMapping):
     """A server-backed dictionary (hashmap) of items embedded in the
     Adding, deleting or updating an item usually means POST/PUTing a single item's resource."""
@@ -146,20 +99,36 @@ class AlternateLicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAdd
         return self.asdict().get("licenses")
 
 
-class AlternateVersion(ServerAddressableObject):
+class Version(ServerAddressableObject, StrictVersion):
+    """Server's self-reported current version number."""
     _baseurl = "/version"
 
     def __call__(self):
-        # The "version number" contains build-flags (e.g., build number, "TP") after the dash; ignore them
-        # 1.2.3-build.flag.names
-        return StrictVersion(self.asdict().get("version").split("-", 1)[0])
+        """
+        Extract a Major.Minor.Patch version number from the server's response,
+        and update internal state.
+        :return: self, which acts like a distutils.StrictVersion
+        """
+        self.parse(self.asdict().get("version").split("-", 1)[0])
+        return self
 
     @property
     def build(self):
+        """
+        Extract build number from version string returned by server.
+        Every official build has a distinct, non-repeating build number.
+        Higher build numbers do not necessarily indicate builds.
+        :return: int
+        """
         return int(self.asdict().get("version").split("-", 1)[1])
 
     @property
     def raw(self):
+        """
+        Raw version string returned by server. Has the format `Major.Minor.Patch-build.flag.names`,
+        where flag names are strings like "TP" or "BETA".
+        :return: str
+        """
         return self.asdict().get("version")
 
 
@@ -284,3 +253,44 @@ class Roles(collections.MutableMapping):
                 raise ValueError('A role with the same name value already exists.')
             else:
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+
+
+class Server(Connection):
+    """High-level object representing the capabilities of a remote Log Insight server"""
+
+    _connection = None
+
+    version = Version(_connection)
+
+    def login(self, username, password, provider):
+        # TODO: Should this attempt to use the credentials?
+        self._authprovider = Credentials(username=username, password=password, provider=provider)
+
+    @property
+    def is_bootstrapped(self):
+        """Convenience function for interogating a server to determine whether it's been bootstrapped already."""
+        raise NotImplementedError("TODO: Determine whether the server is already bootstrapped")
+        try:
+            self.post("/deployment/new")
+            return False
+        except:
+            return True
+
+    @property
+    def current_session(self):
+        resp = self._get("/sessions/current").json()
+        return resp
+
+    @property
+    def license(self):
+        return LicenseKeys(self, "/licenses")
+
+    @property
+    def roles(self):
+        return Roles(self)
+
+    @property
+    def datasets(self):
+        return Datasets(self)
+
+    # TODO: Model the server features as properties

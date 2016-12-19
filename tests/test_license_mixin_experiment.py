@@ -1,5 +1,5 @@
 import pytest
-from pyloginsight.models import Server, AlternateLicenseKeys, AlternateVersion
+from pyloginsight.models import Server, AlternateLicenseKeys
 import logging
 
 
@@ -68,31 +68,6 @@ def test_get_license_summary(connection):
     assert isinstance(licenseobject()['hasOsi'], bool)
     assert isinstance(licenseobject.hasCpu, bool)
     assert isinstance(licenseobject.hasOsi, bool)
-
-
-def test_get_version(connection):
-    from distutils.version import StrictVersion
-    remoteversionobject = AlternateVersion(connection)
-
-    # object's asdict() method produces the server-sent JSON document as a dictionary
-    assert "releaseName" in remoteversionobject.asdict()
-
-    # explicitly-defined @property convenience interfaces provided directly on class
-    assert hasattr(remoteversionobject, "raw")
-    assert "raw" in dir(remoteversionobject)
-
-    # dynamic properties provided by __dir__ and __getattr__, so dict() and hasattr() agree
-    assert hasattr(remoteversionobject, "releaseName")
-    assert "releaseName" in dir(remoteversionobject)
-    with pytest.raises(TypeError):  # dynamic properties are not slice-accessible; that's reserved for the collections mixins
-        _ = remoteversionobject["releaseName"]
-
-    # callable produces a StrictVersion object
-    version = remoteversionobject()
-    print(dir(version))
-
-    assert isinstance(version, StrictVersion)
-    assert version > StrictVersion("0.0")
 
 
 def test_ServerDictMixin_incompatible_with_ServerListMixin(connection):
