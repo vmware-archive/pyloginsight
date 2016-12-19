@@ -15,10 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import requests
-import logging
+
 from requests.compat import urlunparse, urlparse
 from . import __version__ as version
+
+import requests
+import logging
 import warnings
 
 

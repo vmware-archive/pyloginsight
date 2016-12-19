@@ -15,14 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import requests
-import logging
-from requests.compat import urlunparse, urlparse
-import collections
+
 from distutils.version import StrictVersion
-from .connection import Connection, Unauthorized, ServerError, Credentials
-import warnings
+from .connection import Connection, Credentials
+
+import logging
+import collections
 import json
+
 
 logger = logging.getLogger(__name__)
 

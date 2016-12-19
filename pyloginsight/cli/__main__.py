@@ -1,5 +1,8 @@
-import sys
+
+
 from ..Connection import Server
+
+import sys
 import argparse
 import logging
 

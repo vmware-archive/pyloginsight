@@ -19,8 +19,10 @@
 
 # A "Constraint" consists of (field, operator, value).
 
+
 from . import operator
 from requests.utils import quote
+
 import warnings
 
 
