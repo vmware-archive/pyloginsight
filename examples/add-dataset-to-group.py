@@ -3,7 +3,6 @@
 from pyloginsight.models import Server
 from models import PostGroupIdDatasetSpec
 import argparse
-import json
 
 
 class ServerPlus(Server):
