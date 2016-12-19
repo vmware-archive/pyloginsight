@@ -15,10 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import requests
-import logging
+
 from requests.compat import urlunparse, urlparse
 from . import __version__ as version
+
+import requests
+import logging
 import warnings
 
 
@@ -53,8 +55,8 @@ class Credentials(requests.auth.AuthBase):
     def get_session(self, previousresponse, **kwargs):
         """Perform a session login and return a new session ID."""
         if self.username is None or self.password is None:
-            raise RuntimeError("Cannot authenticate without username/password")
-        logging.info("Attempting to authenticate as {0}".format(self.username))
+            raise Unauthorized("Cannot authenticate without username/password")
+        logger.info("Attempting to authenticate as {0}".format(self.username))
         authdict = {"username": self.username, "password": self.password, "provider": self.provider}
 
         prep = previousresponse.request.copy()
@@ -87,7 +89,7 @@ class Credentials(requests.auth.AuthBase):
         if r.status_code not in [401, 440]:
             return r
 
-        logging.debug("Not authenticated (got status {r.status_code} @ {r.request.url})".format(r=r))
+        logger.debug("Not authenticated (got status {r.status_code} @ {r.request.url})".format(r=r))
         r.content  # Drain previous response body, if any
         r.close()
 
@@ -102,7 +104,7 @@ class Credentials(requests.auth.AuthBase):
 
         if _r.status_code in [401, 440]:
             raise Unauthorized("Authentication failed", _r)
-        logging.debug("Authenticated successfully.")
+        logger.debug("Authenticated successfully.")
         return _r
 
     def __call__(self, r):
@@ -140,65 +142,7 @@ class Connection(object):
                                                                      hostname=hostname, port=port, apiv1=APIV1)
 
         self._requestsession.headers.update({'User-Agent': default_user_agent()})
-        logging.debug("Connected to {0}".format(self))
-
-    def _post(self, url, data=None, json=None, params=None, sendauthorization=True):
-        """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
-        r = self._requestsession.post(self._apiroot + url,
-                                      data=data,
-                                      json=json,
-                                      verify=self._verify,
-                                      auth=self._authprovider if sendauthorization else None,
-                                      params=params)
-        if 'Warning' in r.headers:
-            warnings.warn(r.headers.get('Warning'))
-        return r
-
-    def _get(self, url, params=None, sendauthorization=True):
-        r = self._requestsession.get(self._apiroot + url,
-                                     verify=self._verify,
-                                     auth=self._authprovider if sendauthorization else None,
-                                     params=params)
-        if 'Warning' in r.headers:
-            warnings.warn(r.headers.get('Warning'))
-        return r
-
-    def _delete(self, url, params=None, sendauthorization=True):
-        r = self._requestsession.delete(self._apiroot + url,
-                                        verify=self._verify,
-                                        auth=self._authprovider if sendauthorization else None,
-                                        params=params)
-        if 'Warning' in r.headers:
-            warnings.warn(r.headers.get('Warning'))
-        return r
-
-    def _put(self, url, data=None, json=None, params=None, sendauthorization=True):
-        """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
-        r = self._requestsession.put(self._apiroot + url,
-                                     data=data,
-                                     json=json,
-                                     verify=self._verify,
-                                     auth=self._authprovider if sendauthorization else None,
-                                     params=params)
-        if 'Warning' in r.headers:
-            warnings.warn(r.headers.get('Warning'))
-        return r
-
-    def _patch(self, url, data=None, json=None, params=None, sendauthorization=True):
-        """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
-        r = self._requestsession.patch(self._apiroot + url,
-                                       data=data,
-                                       json=json,
-                                       verify=self._verify,
-                                       auth=self._authprovider if sendauthorization else None,
-                                       params=params)
-        if 'Warning' in r.headers:
-            warnings.warn(r.headers.get('Warning'))
-        return r
-
-    def __repr__(self):
-        """Human-readable and machine-executable description of the current connection."""
-        return '{cls}(hostname={x._hostname!r}, port={x._port!r}, ssl={x._ssl!r}, verify={x._verify!r}, auth={x._authprovider!r})'.format(cls=self.__class__.__name__, x=self)
+        logger.debug("Connected to {0}".format(self))
 
     @classmethod
     def copy_connection(cls, connection):
@@ -209,3 +153,66 @@ class Connection(object):
                    auth=connection._authprovider,
                    existing_session=connection._requestsession)
 
+    def _call(self, method, url, data=None, json=None, params=None, sendauthorization=True):
+        r = self._requestsession.request(method=method,
+                                         url=self._apiroot + url,
+                                         data=data,
+                                         json=json,
+                                         verify=self._verify,
+                                         auth=self._authprovider if sendauthorization else None,
+                                         params=params)
+        try:
+            payload = r.json()
+        except:
+            payload = r.text
+        if 'Warning' in r.headers:
+            warnings.warn(r.headers.get('Warning'))
+        if r.status_code in [401, 440]:
+            raise Unauthorized(r.status_code, payload)
+        return r
+
+    def _post(self, url, data=None, json=None, params=None, sendauthorization=True):
+        """
+        Attempt to post to server with current authorization credentials.
+        If post fails with HTTP 401 Unauthorized, authenticate and retry.
+        """
+        return self._call(method="POST",
+                          url=url,
+                          data=data,
+                          json=json,
+                          sendauthorization=sendauthorization,
+                          params=params)
+
+    def _get(self, url, params=None, sendauthorization=True):
+        return self._call(method="GET",
+                          url=url,
+                          sendauthorization=sendauthorization,
+                          params=params)
+
+    def _delete(self, url, params=None, sendauthorization=True):
+        return self._call(method="DELETE",
+                          url=url,
+                          sendauthorization=sendauthorization,
+                          params=params)
+
+    def _put(self, url, data=None, json=None, params=None, sendauthorization=True):
+        """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
+        return self._call(method="PUT",
+                          url=url,
+                          data=data,
+                          json=json,
+                          sendauthorization=sendauthorization,
+                          params=params)
+
+    def _patch(self, url, data=None, json=None, params=None, sendauthorization=True):
+        """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
+        return self._call(method="PATCH",
+                          url=url,
+                          data=data,
+                          json=json,
+                          sendauthorization=sendauthorization,
+                          params=params)
+
+    def __repr__(self):
+        """Human-readable and machine-executable description of the current connection."""
+        return '{cls}(hostname={x._hostname!r}, port={x._port!r}, ssl={x._ssl!r}, verify={x._verify!r}, auth={x._authprovider!r})'.format(cls=self.__class__.__name__, x=self)

@@ -19,7 +19,7 @@
 
 # A "Constraint" consists of (field, operator, value).
 
-from . import operator
+from . import operators as operator
 from requests.utils import quote
 import warnings
 
@@ -60,4 +60,3 @@ class Query:
     def __init__(self, constraints=None, parameters=None):
         if constraints is None:
             constraints = []
-

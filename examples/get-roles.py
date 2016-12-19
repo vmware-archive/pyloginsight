@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
+
 from pyloginsight.models import Server, Credentials
+
 import argparse
 import pprint
+
 
 if __name__ == "__main__":
 

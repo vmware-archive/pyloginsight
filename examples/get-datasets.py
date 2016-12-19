@@ -19,4 +19,3 @@ if __name__ == "__main__":
     server = Server(hostname=args.server, verify=False, auth=creds)
 
     pprint.pprint({k: v for (k, v) in server.datasets.items()})
-

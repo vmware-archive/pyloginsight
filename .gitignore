@@ -7,3 +7,6 @@
 *.swp
 .eggs
 CREDENTIALS.py
+export/
+dist/
+.coverage

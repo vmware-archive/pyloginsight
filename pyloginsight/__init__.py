@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 
 __title__ = 'pyloginsight'
 __build__ = None
@@ -28,14 +27,3 @@ try:
     from .__version__ import version as __version__
 except ImportError:
     __version__ = "0.dev0"  # Mirrors setup.py. Should only be used if the package was installed from source.
-
-
-# Set default logging handler to avoid "No handler found" warnings.
-try:  # Python 2.7+
-    from logging import NullHandler
-except ImportError:
-    class NullHandler(logging.Handler):
-        def emit(self, record):
-            pass
-
-logging.getLogger(__name__).addHandler(NullHandler())
