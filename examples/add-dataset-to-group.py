@@ -8,12 +8,12 @@ import argparse
 class ServerPlus(Server):
 
     def add_dataset_to_group(self, dataset_id, group_id):
-        """ Add a dataset to a group. DISCLAIMER: At the time of writing this API was a technical preview. """ 
+        """ Add a dataset to a group. DISCLAIMER: At the time of writing this API was a technical preview. """
 
         data = PostGroupIdDatasetSpec(
-            group_id = group_id,
-            dataset_add_list = [dataset_id],
-            dataset_remove_list = []
+            group_id=group_id,
+            dataset_add_list=[dataset_id],
+            dataset_remove_list=[]
         ).json()
 
         response = self._post('/groups/{group_id}/datasets'.format(group_id=group_id), data=data)
@@ -34,7 +34,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     server = ServerPlus(args.server, verify=False)
-    server.login( username=args.username, password=args.password, provider=args.provider)
+    server.login(username=args.username, password=args.password, provider=args.provider)
     server.add_dataset_to_group(group_id=args.group_id, dataset_id=args.dataset_id)
-
-

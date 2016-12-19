@@ -12,6 +12,8 @@ import collections
 
 stats = collections.Counter()
 
+logger = logging.getLogger(__name__)
+
 
 class TestValidationError(RuntimeError):
     def __init__(self, message, context, exception=None):
@@ -93,7 +95,7 @@ def test_example_against_schema(examplestring, schema, verb=None, path=None, ctx
             try:
                 jsonschema.validate(example, schema)
                 if not args.quiet:
-                    logging.debug('Valid: {}'.format(context))
+                    logger.debug('Valid: {}'.format(context))
                     stats['Valid'] += 1
                 return True
 
@@ -122,7 +124,7 @@ def check_body(body, verb=None, path=None, ctx=None):
     """
     if body is None:
         # A body isn't strictly required. For example, the server may respond with a HTTP 200 with no JSON
-        # logging.warning("MissingBody: {} {} {}".format(verb, path, ctx))
+        # logger.warning("MissingBody: {} {} {}".format(verb, path, ctx))
         # stats['MissingBody'] += 1
         return
 
@@ -131,10 +133,10 @@ def check_body(body, verb=None, path=None, ctx=None):
         try:
             test_example_against_schema(body[mime].example, body[mime].schema, verb, path, ctx)
         except Empty as e:
-            logging.warning(str(e))
+            logger.warning(str(e))
             critical = e.innerexception  # unpack inner exception, such as a jsonschema.exceptions.SchemaError
         except TestValidationError as e:
-            logging.error(str(e))
+            logger.error(str(e))
             critical = e.innerexception  # unpack inner exception, such as a jsonschema.exceptions.SchemaError
         if critical and args.fastfail:
             raise critical
@@ -144,7 +146,7 @@ def skipis(resource, islist, name=""):
     if resource.is_:
         for isness in resource.is_:
             if isness in islist:
-                # logging.debug("Ignoring %s for isness %s" % (name, isness))
+                # logger.debug("Ignoring %s for isness %s" % (name, isness))
                 return True
         return False
 
@@ -204,7 +206,6 @@ def parse_url_response(raml, verb, route, response, status=200, contenttype='app
 if __name__ == "__main__":
     global args
 
-    logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler(sys.stderr)
     formatter = logging.Formatter(u'%(asctime)s %(name)s[%(process)d] %(levelname)s %(message)s')

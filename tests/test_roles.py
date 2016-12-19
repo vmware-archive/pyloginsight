@@ -1,4 +1,5 @@
-import pytest, requests_mock
+import pytest
+import requests_mock
 from pyloginsight.models import Server, Credentials, Roles
 
 
@@ -10,7 +11,7 @@ GET_GROUPS_ID_400 = '{"errorMessage":"Bad request received (Cannot parse paramet
 GET_GROUPS_ID_404 = '{"errorMessage":"Specified group does not exist.","errorCode":"RBAC_GROUPS_ERROR","errorDetails":{"errorCode":"com.vmware.loginsight.api.errors.rbac.group_does_not_exist"}}'
 POST_GROUPS_ID = ''  # response is empty string
 PATCH_GROUPS_ID = ''  # response is empty string
-DELETE_GROUPS_ID = '' # response is empty string
+DELETE_GROUPS_ID = ''  # response is empty string
 DELETE_GROUPS_ID_409 = '{"errorMessage":"Specified group is required.","errorCode":"RBAC_GROUPS_ERROR","errorDetails":{"errorCode":"com.vmware.loginsight.api.errors.rbac.group_is_required"}}'
 DELETE_GROUPS_ID_404 = '{"errorMessage":"Specified group does not exist.","errorCode":"RBAC_GROUPS_ERROR","errorDetails":{"errorCode":"com.vmware.loginsight.api.errors.rbac.group_does_not_exist"}}'
 

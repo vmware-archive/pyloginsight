@@ -18,9 +18,9 @@
 
 from distutils.version import StrictVersion
 from .connection import Connection, Credentials
-
 import logging
 import collections
+from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin
 import json
 
 
@@ -72,18 +72,6 @@ class Server(Connection):
         return Datasets(self)
 
     # TODO: Model the server features as properties
-
-
-class ServerList(collections.Sequence):
-    """A server-backed list of items. Can be appended to, sliced, etc.
-    Updating an item in the list usually means POST/PUTing a full new list."""
-    pass
-
-
-class ServerDict(collections.MutableMapping):
-    """A server-backed dictionary (hashmap) or items, usually keyed by a UUID.
-    Adding, deleting or updating an item usually means POST/PUTing a single item's resource."""
-    pass
 
 
 class LicenseKeys(collections.MutableMapping):
@@ -140,6 +128,39 @@ class LicenseKeys(collections.MutableMapping):
     def summary(self):
         """Dictionary summarizing installed licenses and active features"""
         return self._rootobject
+
+
+class AlternateLicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
+    _baseurl = "/licenses"
+    _fromserver = collections.namedtuple("License", ("id", "error", "status", "configuration", "expiration", "licenseKey", "infinite", "count", "typeEnum"))
+
+    class _createspec(object):
+        def __init__(self, key):
+            self.key = key
+
+        def _asdict(self):
+            return {"key": self.key}
+
+    @property
+    def _iterable(self):
+        return self.asdict().get("licenses")
+
+
+class AlternateVersion(ServerAddressableObject):
+    _baseurl = "/version"
+
+    def __call__(self):
+        # The "version number" contains build-flags (e.g., build number, "TP") after the dash; ignore them
+        # 1.2.3-build.flag.names
+        return StrictVersion(self.asdict().get("version").split("-", 1)[0])
+
+    @property
+    def build(self):
+        return int(self.asdict().get("version").split("-", 1)[1])
+
+    @property
+    def raw(self):
+        return self.asdict().get("version")
 
 
 class Datasets(collections.MutableMapping):
@@ -201,7 +222,7 @@ class Roles(collections.MutableMapping):
 
     @property
     def _rootobject(self):
-        return {group['id']:group for group in self._connection._get('/groups').json()['groups']}
+        return {group['id']: group for group in self._connection._get('/groups').json()['groups']}
 
     def __delitem__(self, group_id):
         """ Deletes a role. """
@@ -218,7 +239,6 @@ class Roles(collections.MutableMapping):
                 raise KeyError('The specified role is required and cannot be deleted.')
             else:
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
-
 
     def __getitem__(self, group_id):
         """ Gets a role. """
