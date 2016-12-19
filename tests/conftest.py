@@ -15,6 +15,8 @@ usemockserver = True
 useliveserver = False
 useinternet = False
 
+live_server None
+# live_server = ConnectionContainer(Connection, "real.server.example.com", Credentials("admin", "secret", "Local"), False)
 
 def pytest_generate_tests(metafunc):
     """Called by pytest to parametize tests."""
@@ -26,13 +28,10 @@ def pytest_generate_tests(metafunc):
         connections.append(ConnectionContainer(MockedConnection, "mockserverlocal", Credentials("admin", "password", "mock"), True))
 
     if useliveserver:
-        print("Considering whether I should use the live server...")
-        live_server = ConnectionContainer(Connection, "li-latest.eng.vmware.com", Credentials("admin", "VMware123!", "Local"), False)
         if useliveserver and live_server and socket.gethostbyname(live_server.hostname):
             logger.warning("Using live server {0}".format(live_server))
             connections.append(live_server)
         else:
-            print("Nope!")
             useliveserver = False
 
     credentialled_connections = {"good": [], "fake": [], "none": []}
