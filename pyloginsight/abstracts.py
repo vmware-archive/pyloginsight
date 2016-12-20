@@ -150,6 +150,16 @@ class ServerAddressableObject(ABC):
         if ServerDictMixin in self.__class__.__mro__ and ServerListMixin in self.__class__.__mro__:
             raise TypeError("ServerDictMixin and ServerListMixin are mutually-exclusive concepts. They both try to define __iter__")
 
+    def __get__(self, obj, objtype):
+        if callable(self):
+            self.__init__(obj)
+            return self()
+        else:
+            raise AttributeError("Cannot retrieve {0} from {1}".format(self.__class__.__name__, objtype.__name__))
+
+    def __set__(self, obj, value):
+        raise AttributeError()
+
     @property
     @abc.abstractmethod
     def _baseurl(self):
