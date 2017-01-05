@@ -131,3 +131,127 @@ def test_append():
 
     with pytest.raises(TypeError):
         server.roles.append()
+
+
+@pytest.mark.xfail
+def test_role_get():
+    assert server.roles['00000000-0000-0000-0000-000000000001'] is not None
+
+
+@pytest.mark.xfail
+def test_role_set():
+    r = server.roles['00000000-0000-0000-0000-000000000001']
+    server.roles['00000000-0000-0000-0000-000000000001'] = r
+
+
+@pytest.mark.xfail
+def test_role_del():
+    del server.roles['00000000-0000-0000-0000-000000000001']
+
+    with pytest.raises(KeyError):
+        del server.roles['00000000-0000-0000-0000-000000000001']
+
+
+@pytest.mark.xfail
+def test_role_get_name():
+    assert server.roles['00000000-0000-0000-0000-000000000001'].name is not None
+
+
+@pytest.mark.xfail
+def test_role_set_name():
+    server.roles['00000000-0000-0000-0000-000000000001'].name = 'moo'
+
+
+@pytest.mark.xfail
+def test_role_set_multiple():
+    with server.roles['00000000-0000-0000-0000-000000000001'] as role:
+        role.name = 'moo'
+        role.description = 'desc'
+
+
+# Datasets
+@pytest.mark.xfail
+def test_role_get_datasets():
+    for d in server.roles['00000000-0000-0000-0000-000000000001'].datasets:
+        assert type(d) == Dataset
+
+
+@pytest.mark.xfail
+def test_role_set_dataset():
+    d = server.roles['00000000-0000-0000-0000-000000000001'].datasets
+    server.roles['00000000-0000-0000-0000-000000000001'].datasets = d
+
+
+# Users
+@pytest.mark.xfail
+def test_role_get_users():
+    for u in server.roles['00000000-0000-0000-0000-000000000001'].users:
+        assert type(u) == User
+
+
+@pytest.mark.xfail
+def test_role_set_users():
+    u = server.roles['00000000-0000-0000-0000-000000000001'].users
+    server.roles['00000000-0000-0000-0000-000000000001'].users = u
+
+
+# ADGroups
+@pytest.mark.xfail
+def test_role_get_adgroups():
+    for u in server.roles['00000000-0000-0000-0000-000000000001'].users:
+        assert type(u) == User
+
+
+@pytest.mark.xfail
+def test_role_set_adgroups():
+    g = server.roles['00000000-0000-0000-0000-000000000001'].adgroups
+    server.roles['00000000-0000-0000-0000-000000000001'].adgroups = g
+
+
+# Capabilities
+@pytest.mark.xfail
+def test_role_get_capabilities():
+    for c in server.roles['00000000-0000-0000-0000-000000000001'].capabilities:
+        assert type(c) == Capability
+
+
+@pytest.mark.xfail
+def test_role_set_capabilities():
+    c = server.roles['00000000-0000-0000-0000-000000000001'].capabilities
+    with pytest.raises(NotImplementedError):
+        server.roles['00000000-0000-0000-0000-000000000001'].capabilities[0] = c[0]
+
+
+@pytest.mark.xfail
+def test_theory():
+    class ZDataset(object):
+        def __init__(self, dataset_id):
+            self.dataset_id = dataset_id
+
+
+    class XRole(object):
+
+        def __init__(self, roleid):
+            self._roleid = roleid
+
+        class YDatasets(object):
+            def __init__(self, roleid):
+                self._roleid = roleid
+
+            def __getitem__(self, dataset_id):
+                return ZDataset(dataset_id)
+
+        @property
+        def datasets(self):
+            return self.YDatasets(self._roleid)
+
+        pass
+
+    r = XRole(1)
+
+    d = r.datasets
+
+    ds = d[4]
+
+    assert ds.dataset_id == 4
+
