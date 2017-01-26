@@ -23,6 +23,9 @@ def test_namedtyple_with_only_fields_as_list():
     thing = ThingClass()
     assert thing.field1 is None
     assert thing.field2 is None
+    assert ThingClass().field1 is None
+    assert ThingClass().field2 is None
+
 
 def test_namedtyple_with_only_fields_as_string():
     ThingClass = pyloginsight.models.named_tuple_with_defaults('ThingClass', fields='field1 field2')
@@ -30,6 +33,9 @@ def test_namedtyple_with_only_fields_as_string():
     thing = ThingClass()
     assert thing.field1 is None
     assert thing.field2 is None
+    assert ThingClass().field1 is None
+    assert ThingClass().field2 is None
+
 
 def test_namedtyple_with_values_as_list_of_strings():
     ThingClass = pyloginsight.models.named_tuple_with_defaults('ThingClass', fields=['field1', 'field2'], values=['value1', 'value2'])
@@ -37,6 +43,8 @@ def test_namedtyple_with_values_as_list_of_strings():
     thing = ThingClass()
     assert thing.field1 == 'value1'
     assert thing.field2 == 'value2'
+    assert ThingClass().field1 == 'value1'
+    assert ThingClass().field2 == 'value2'
 
 def test_namedtyple_with_values_as_list_of_empty_tuples():
     ThingClass = pyloginsight.models.named_tuple_with_defaults('ThingClass', fields=['tuple1', 'tuple2'], values=[(), ()])
@@ -44,6 +52,8 @@ def test_namedtyple_with_values_as_list_of_empty_tuples():
     thing = ThingClass()
     assert thing.tuple1 == ()
     assert thing.tuple2 == ()
+    assert ThingClass().tuple1 == ()
+    assert ThingClass().tuple2 == ()
 
 
 def test_namedtyple_with_values_as_list_of_empty_strings():
@@ -52,6 +62,16 @@ def test_namedtyple_with_values_as_list_of_empty_strings():
     thing = ThingClass()
     assert thing.string1 == ''
     assert thing.string2 == ''
+    assert ThingClass().string1 == ''
+    assert ThingClass().string2 == ''
+
+
+def test_namedtype_setting_values_on_instance():
+    ThingClass = pyloginsight.models.named_tuple_with_defaults('ThingClass', fields=['string1', 'string2'], values=['', ''])
+    thing = ThingClass()
+    with pytest.raises(AttributeError):
+        thing.string1 = 'pumpkin'
+        thing.string2 = 'toothpaste'
 
 
 def test_namedtyple_with_values_as_list_of_none():
@@ -60,5 +80,6 @@ def test_namedtyple_with_values_as_list_of_none():
     thing = ThingClass()
     assert thing.none1 is None
     assert thing.none2 is None
-
+    assert ThingClass().none1 is None
+    assert ThingClass().none2 is None
 
