@@ -22,7 +22,7 @@ from . import __version__ as version
 import requests
 import logging
 import warnings
-
+from .models import Server
 
 logger = logging.getLogger(__name__)
 APIV1 = '/api/v1'
@@ -32,12 +32,7 @@ def default_user_agent():
     return "pyloginsight/{0}".format(version)
 
 
-class ServerError(RuntimeError):
-    pass
-
-
-class Unauthorized(ServerError):
-    pass
+from .exceptions import ServerError, ResourceNotFound, TransportError, Unauthorized
 
 
 class Credentials(requests.auth.AuthBase):
@@ -146,6 +141,7 @@ class Connection(object):
 
     @classmethod
     def copy_connection(cls, connection):
+        warnings.warn(DeprecationWarning)
         return cls(hostname=connection._hostname,
                    port=connection._port,
                    ssl=connection._ssl,
@@ -161,17 +157,46 @@ class Connection(object):
                                          verify=self._verify,
                                          auth=self._authprovider if sendauthorization else None,
                                          params=params)
+
+        if 'Warning' in r.headers:
+            warnings.warn(r.headers.get('Warning'))
+
         try:
             payload = r.json()
         except:
             payload = r.text
-        if 'Warning' in r.headers:
-            warnings.warn(r.headers.get('Warning'))
+
         if r.status_code in [401, 440]:
             raise Unauthorized(r.status_code, payload)
-        return r
+        if r.status_code in [404]:
+            raise ResourceNotFound(r.status_code, payload)
 
-    def _post(self, url, data=None, json=None, params=None, sendauthorization=True):
+        """
+        if r.status_code in [200, 201]:
+            try:
+                if payload.keys() == ['id']:  # if there is only one key in the response, and it's "id", return it
+                    return payload['id']
+            except (KeyError, AttributeError):
+                return True
+        """
+
+        # Success
+        if 200 <= r.status_code < 300:
+            return payload
+
+        # Failure. We're going to throw an exception. Try to harvest an errorMessage from the response.
+        try:
+            error_message = payload['errorMessage']
+        except (TypeError, KeyError):
+            error_message = None
+
+        if error_message:
+            raise ValueError(r.status_code, error_message)
+        else:
+            raise TransportError(r.status_code, payload)
+
+
+    def post(self, url, data=None, json=None, params=None, sendauthorization=True):
         """
         Attempt to post to server with current authorization credentials.
         If post fails with HTTP 401 Unauthorized, authenticate and retry.
@@ -183,19 +208,19 @@ class Connection(object):
                           sendauthorization=sendauthorization,
                           params=params)
 
-    def _get(self, url, params=None, sendauthorization=True):
+    def get(self, url, params=None, sendauthorization=True):
         return self._call(method="GET",
                           url=url,
                           sendauthorization=sendauthorization,
                           params=params)
 
-    def _delete(self, url, params=None, sendauthorization=True):
+    def delete(self, url, params=None, sendauthorization=True):
         return self._call(method="DELETE",
                           url=url,
                           sendauthorization=sendauthorization,
                           params=params)
 
-    def _put(self, url, data=None, json=None, params=None, sendauthorization=True):
+    def put(self, url, data=None, json=None, params=None, sendauthorization=True):
         """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
         return self._call(method="PUT",
                           url=url,
@@ -204,7 +229,7 @@ class Connection(object):
                           sendauthorization=sendauthorization,
                           params=params)
 
-    def _patch(self, url, data=None, json=None, params=None, sendauthorization=True):
+    def patch(self, url, data=None, json=None, params=None, sendauthorization=True):
         """Attempt to post to server with current authorization credentials. If post fails with HTTP 401 Unauthorized, retry."""
         return self._call(method="PATCH",
                           url=url,
@@ -216,3 +241,35 @@ class Connection(object):
     def __repr__(self):
         """Human-readable and machine-executable description of the current connection."""
         return '{cls}(hostname={x._hostname!r}, port={x._port!r}, ssl={x._ssl!r}, verify={x._verify!r}, auth={x._authprovider!r})'.format(cls=self.__class__.__name__, x=self)
+
+    def write(self, baseobject, url=None):
+        return Writer(connection=self, baseobject=baseobject, url=url)
+
+    @property
+    def server(self):
+        return Server(self)
+
+
+class Writer(object):
+    cancelled = False
+
+    def __enter__(self):
+        return self._baseobject
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            logger.warning("Dropping changes to {b} due to exception {e}".format(b=self._baseobject, e=exc_value))
+        elif self.cancelled:
+            logger.warning("Dropping changes to {b} due to cancellation".format(b=self._baseobject))
+        else:
+            self._baseobject.to_server(self._connection, self._url)
+
+    def __init__(self, connection, baseobject, url=None):
+        self._baseobject = baseobject
+        self._connection = connection
+        self._url = url
+        if not hasattr(baseobject, "to_server"):
+            raise AttributeError("Passed object has no to_server() method")
+
+    def cancel(self):
+        self.cancelled = True

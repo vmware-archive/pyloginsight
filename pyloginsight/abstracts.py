@@ -2,8 +2,10 @@
 
 import logging
 import collections
-from .connection import ServerError  # Consider refactoring exceptions out of the `connection` module
+from .exceptions import ServerError, ResourceNotFound, TransportError, Unauthorized
 import abc
+import attr
+
 
 logger = logging.getLogger(__name__)
 ABC = abc.ABCMeta('ABC', (object,), {})
@@ -18,14 +20,11 @@ class ServerDictMixin(collections.MutableMapping):
     Mutually-incompatible with the `ServerListMixin`.
     """
     def __delitem__(self, item):
-        resp = self._connection._delete("{0}/{1}".format(self._baseurl, item))
-        if resp.status_code == 200:
-            return True
-        elif resp.status_code == 404:
-            raise KeyError("Unknown license key uuid {0}".format(item))
-        else:
-            raise ServerError(resp.json()['errorMessage'])
-        # TODO: Should raise KeyError on unknown license key.
+        try:
+            resp = self._connection.delete("{0}/{1}".format(self._baseurl, item))
+        except ResourceNotFound:
+            raise KeyError(item)
+        return True
 
     def __getitem__(self, item):
         """
@@ -110,18 +109,11 @@ class AppendableServerDictMixin(object):
         :param value: any python object which will be passed to and marshaled by :func:self._createspec:
         :return uuid: url-fragment identifier for the newly-created server-side object
         """
-        resp = self._connection._post(self._baseurl, json=self._createspec(value)._asdict())
-        if resp.status_code in [400, 409, 500]:
-            raise ValueError(resp.json()['errorMessage'])
-        elif resp.status_code == 201:
-            try:
-                return resp.json()['id']  # new UUID for this object, probably accessible at _baseurl/{id}
-            except KeyError:
-                return True
+        resp = self._connection.post(self._baseurl, json=self._createspec(value)._asdict())
         try:
-            raise ServerError(resp.status_code, resp.json()['errorMessage'])
+            return resp['id']  # new UUID for this object, probably accessible at _baseurl/{id}
         except KeyError:
-            raise ServerError(resp.status_code, resp.text)
+            return True
 
     @abc.abstractmethod
     def _createspec(self, value):
@@ -150,6 +142,7 @@ class ServerAddressableObject(ABC):
         if ServerDictMixin in self.__class__.__mro__ and ServerListMixin in self.__class__.__mro__:
             raise TypeError("ServerDictMixin and ServerListMixin are mutually-exclusive concepts. They both try to define __iter__")
 
+    """
     def __get__(self, obj, objtype):
         if callable(self):
             self.__init__(obj)
@@ -160,6 +153,8 @@ class ServerAddressableObject(ABC):
     def __set__(self, obj, value):
         raise AttributeError()
 
+    """
+
     @property
     @abc.abstractmethod
     def _baseurl(self):
@@ -168,7 +163,7 @@ class ServerAddressableObject(ABC):
 
     def asdict(self):
         """GET against the collection's base url, producing a collection-specific summary. Used as the basis for all getters/iterators."""
-        return self._connection._get(self._baseurl).json()
+        return self._connection.get(self._baseurl)
 
     def __call__(self):
         """
@@ -190,3 +185,72 @@ class ServerAddressableObject(ABC):
         if name in t:
             return t[name]
         raise AttributeError(name)
+
+class ServerProperty(object):
+    """
+    Descriptor for a server's object property. Writes updates to the server on property change.
+    """
+
+    def __init__(self, clazz, readonly=False):
+        self.clazz = clazz
+        self.value = None
+
+        if readonly:
+            self.__set__ = False
+
+    def lookup_attrib(self, owner):
+        for attrib in dir(owner):
+            if getattr(owner, attrib) is self:
+                return attrib
+        #print ("Fallthrough lookup_attrib on", owner)
+
+    def __get__(self, instance, objtype):
+        if instance is None:
+            return self
+        attribute_name = self.lookup_attrib(objtype)
+        self._name = attribute_name
+
+        print("Trying to read server property", attribute_name, "from", instance)
+
+        #return self.value
+        if callable(self.clazz):
+            return self.clazz.from_server(instance._connection)
+        else:
+            raise AttributeError("Cannot retrieve {0} from {1}".format(self.__class__.__name__, objtype.__name__))
+
+    def __set__(self, instance, value):
+        if instance is None:
+            return self
+        attribute_name = self.lookup_attrib(type(instance))
+        self._name = attribute_name
+
+        print("Trying to write server property", attribute_name, "from", instance)
+        self.value = value
+
+        #raise AttributeError()
+
+
+@attr.s
+class Entity(object):
+    _url = attr.ib(default=None)
+    _raw = None
+
+    @classmethod
+    def from_server(cls, connection, url=None):
+        if cls._url == None and url == None:
+            raise AttributeError("Cannot read object from server without a url")
+        body = connection.get(url or cls._url)
+        instance = cls(url=url, **body)
+        instance._raw = body
+        return instance
+
+    def to_server(self, connection, url=None):
+        if url is None:
+            url = self._url
+        body = attr.asdict(self)
+        del body['_url']
+        response = connection.put(url, json=body)
+        return response
+
+    def __get__(self, instance, objtype):
+        print("__get__(", instance, objtype)

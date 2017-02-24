@@ -3,7 +3,8 @@
 
 import pytest
 import requests_mock
-from pyloginsight.models import Server, Credentials
+from pyloginsight.models import Server
+from pyloginsight.connection import Credentials
 
 
 GET_DATASETS_200 = '{"dataSets":[{"id":"7c677664-e373-456d-ba85-6047dfc84452","name":"vobd","description":"Events from the vobd daemon on ESXi","type":"OR","constraints":[{"name":"appname","operator":"CONTAINS","value":"vobd","fieldType":"STRING","hidden":false}]}]}'
@@ -23,12 +24,12 @@ adapter.register_uri('DELETE', 'https://mockserver:9543/api/v1/datasets/00000000
 adapter.register_uri('DELETE', 'https://mockserver:9543/api/v1/datasets/raspberry', text=DELETE_DATASETS_400_2, status_code=400)
 
 
-creds = Credentials(username='admin', password='secret', provider='Local')
-server = Server(hostname='mockserver', verify=False)
-server._requestsession.mount('https://', adapter)
+#creds = Credentials(username='admin', password='secret', provider='Local')
+#server = Server(hostname='mockserver', verify=False)
+#server._requestsession.mount('https://', adapter)
 
 
-def test_delitem():
+def test_delitem(server):
     # For some reason when performing local tests this operation returns a string instead of none.
     # When testing interactively, I get the expected response.
     server.datasets.pop('7c677664-e373-456d-ba85-6047dfc84452', None)
@@ -40,26 +41,26 @@ def test_delitem():
         del server.datasets['raspberry']
 
 
-def test_getitem():
+def test_getitem(server):
     assert server.datasets['7c677664-e373-456d-ba85-6047dfc84452']['name'] == 'vobd'
     assert type(server.datasets['7c677664-e373-456d-ba85-6047dfc84452']['constraints']) == list
 
 
-def test_setitem():
+def test_setitem(server):
     with pytest.raises(NotImplementedError):
         server.datasets['7c677664-e373-456d-ba85-6047dfc84452'] = 'raspberry'
 
 
-def test_len():
+def test_len(server):
     assert len(server.datasets) == 1
 
 
-def test_iter():
+def test_iter(server):
     assert type([v for v in server.datasets.values()][0]) == dict
     assert len([d for d in server.datasets]) == 1
 
 
-def test_append():
+def test_append(server):
     assert server.datasets.append(name='mydataset', description='mydescription', field='hostname', value='esx*') is None
 
     with pytest.raises(TypeError):

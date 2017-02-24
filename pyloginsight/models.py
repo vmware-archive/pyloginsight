@@ -17,10 +17,11 @@
 
 
 from distutils.version import StrictVersion
-from .connection import Connection, Credentials
+#from .connection import Credentials
 import logging
 import collections
-from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin
+from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
+from .abstracts import Entity, ServerProperty
 import json
 
 
@@ -36,25 +37,15 @@ class LicenseKeys(collections.MutableMapping):
         self._baseurl = baseurl
 
     def __delitem__(self, item):
-        resp = self._connection._delete("{0}/{1}".format(self._baseurl, item))
-        if resp.status_code == 200:
-            return True
-        elif resp.status_code == 404:
-            raise KeyError("Unknown license key uuid {0}".format(item))
-        else:
-            raise ValueError(resp.json()['errorMessage'])
-        # TODO: Should raise KeyError on unknown license key.
+        resp = self._connection.delete("{0}/{1}".format(self._baseurl, item))
+        return True
 
     def append(self, licensekey):
         """A list-like interface for addding a new licence.
         The server will assign a new UUID when inserting into the mapping.
         A subsequent request to keys/iter will contain the new license in the value."""
-        resp = self._connection._post(self._baseurl, json={"key": licensekey})
-        if resp.status_code in [400, 409, 500]:
-            raise ValueError(resp.json()['errorMessage'])
-        elif resp.status_code == 201:
-            return True
-        raise NotImplementedError("Unhandled status")
+        resp = self._connection.post(self._baseurl, json={"key": licensekey})
+        return True
 
     def __getitem__(self, item):
         """Retrieve details for a license key. Could raise KeyError."""
@@ -75,7 +66,7 @@ class LicenseKeys(collections.MutableMapping):
 
     @property
     def _rootobject(self):
-        return self._connection._get(self._baseurl).json()
+        return self._connection.get(self._baseurl)
 
     @property
     def summary(self):
@@ -117,7 +108,7 @@ class Version(ServerAddressableObject, StrictVersion):
         """
         Extract build number from version string returned by server.
         Every official build has a distinct, non-repeating build number.
-        Higher build numbers do not necessarily indicate builds.
+        Higher build numbers do not necessarily indicate a superset of functionality.
         :return: int
         """
         return int(self.asdict().get("version").split("-", 1)[1])
@@ -132,6 +123,85 @@ class Version(ServerAddressableObject, StrictVersion):
         return self.asdict().get("version")
 
 
+class Version(StrictVersion, Entity):
+    """
+    Version of the server.
+    """
+    release_name = None
+    prerelease = None
+    _url = "/version"
+
+    def __init__(self, url, version, releaseName, **kwargs):
+        self.release_name = releaseName
+        self.vstring, self.build_string = version.split("-", 1)
+        super(Version, self).__init__(self.vstring)
+
+    @property
+    def build(self):
+        """
+        Extract build number from version string returned by server.
+        Every official build has a distinct, non-repeating build number.
+        Higher build numbers do not necessarily indicate a superset of functionality.
+        :return: int
+        """
+        return int(self.build_string)
+
+
+
+class Dataset(ServerAddressableObject):
+    """
+    An object, canonically at /datasets/UUID, which defines a set of rules constraining queries.
+
+    Can self-update on property change, if it has a connection and existing UUID.
+    Can be appended to a Datasets collection.
+    Can be retrieved from a Datasets collection.
+    """
+
+    id = None
+    name = ""
+    description = ""
+    type = None
+    constraints = None
+
+
+    def __init__(self, name, description="", id=None, type="OR", constraints=None):
+        self.id = id
+        self.name = name
+        self.description = description
+        self.type = type
+        self.constraints = Dataset.Constraints(constraints) if constraints else Dataset.Constraints()
+
+    class Constraints(ServerListMixin):
+        pass
+
+        class Constraint(ServerAddressableObject):
+            name = None
+            operator = None
+            value = None
+            fieldType = "STRING"
+            hidden = False
+
+
+
+    GET_DATASETS_200 = '{"dataSets":[' \
+                       '{"id":"7c677664-e373-456d-ba85-6047dfc84452",' \
+                       '"name":"vobd",' \
+                       '"description":' \
+                       '"Events from the vobd daemon on ESXi",' \
+                       '"type":"OR",' \
+                       '"constraints":[{"name":"appname","operator":"CONTAINS","value":"vobd","fieldType":"STRING","hidden":false}]}]}'
+
+
+class Dataset(object):
+    def __init__(self, name, description, type, id=None, constraints=[]):
+        self.name = name
+        self.description = description
+        self.type = type
+        self.id = id
+        self.constraints = constraints
+
+
+
 class Datasets(collections.MutableMapping):
 
     def __init__(self, connection):
@@ -139,10 +209,10 @@ class Datasets(collections.MutableMapping):
 
     @property
     def _rootobject(self):
-        return {dataset['id']: dataset for dataset in self._connection._get('/datasets').json()['dataSets']}
+        return {dataset['id']: dataset for dataset in self._connection.get('/datasets')['dataSets']}
 
     def __delitem__(self, key):
-        response = self._connection._delete('/datasets/{i}'.format(i=key))
+        response = self._connection.delete('/datasets/{i}'.format(i=key))
         if response.ok:
             pass
         else:
@@ -172,7 +242,7 @@ class Datasets(collections.MutableMapping):
 
         constraints = [{'name': field, 'operator': 'CONTAINS', 'value': value, 'fieldType': 'STRING'}]
         data = json.dumps({'name': name, 'description': description, 'constraints': constraints})
-        response = self._connection._post('/datasets', data=data)
+        response = self._connection.post('/datasets', data=data)
 
         if response.ok:
             return None
@@ -184,6 +254,19 @@ class Datasets(collections.MutableMapping):
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
 
 
+_Role = collections.namedtuple('Role', 'name, description, datasets, capabilities, users')
+class Role(_Role):
+    def __new__(cls, name, description="", datasets=[], capabilities=[], users=[]):
+        if not isinstance(datasets, ServerListMixin):
+            datasets = ServerListMixin(datasets)
+        if not isinstance(capabilities, ServerListMixin):
+            capabilities = ServerListMixin(capabilities)
+        if not isinstance(users, ServerListMixin):
+            users = ServerListMixin(users)
+
+        self = super(Role, cls).__new__(cls, name, description, datasets, capabilities, users)
+        return self
+
 class Roles(collections.MutableMapping):
 
     def __init__(self, connection):
@@ -191,12 +274,12 @@ class Roles(collections.MutableMapping):
 
     @property
     def _rootobject(self):
-        return {group['id']: group for group in self._connection._get('/groups').json()['groups']}
+        return {group['id']: group for group in self._connection.get('/groups')['groups']}
 
     def __delitem__(self, group_id):
         """ Deletes a role. """
 
-        response = self._connection._delete('/groups/{i}'.format(i=group_id))
+        response = self._connection.delete('/groups/{i}'.format(i=group_id))
 
         if response.ok:
             pass
@@ -243,7 +326,7 @@ class Roles(collections.MutableMapping):
             raise TypeError('Capabilities must contain at least one valid capability.  Capabilities include: {m}.'.format(m=', '.join(good_capabilities)))
 
         data = json.dumps({'name': name, 'description': description, 'capabilities': valid_capabilities})
-        response = self._connection._post('/groups', data=data)
+        response = self._connection.post('/groups', data=data)
 
         if response.ok:
             pass
@@ -255,16 +338,20 @@ class Roles(collections.MutableMapping):
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
 
 
-class Server(Connection):
+class Server(object):
     """High-level object representing the capabilities of a remote Log Insight server"""
-
     _connection = None
 
-    version = Version(_connection)
+    def __init__(self, connection):
+        self._connection = connection
 
-    def login(self, username, password, provider):
-        # TODO: Should this attempt to use the credentials?
-        self._authprovider = Credentials(username=username, password=password, provider=provider)
+
+    @property
+    def version(self):
+        return Version.from_server(self._connection)
+
+    version2 = ServerProperty(Version)
+
 
     @property
     def is_bootstrapped(self):
@@ -278,19 +365,20 @@ class Server(Connection):
 
     @property
     def current_session(self):
-        resp = self._get("/sessions/current").json()
+        resp = self._connection.get("/sessions/current")
         return resp
 
     @property
     def license(self):
-        return LicenseKeys(self, "/licenses")
+        return LicenseKeys(self._connection, "/licenses")
 
     @property
     def roles(self):
-        return Roles(self)
+        return Roles(self._connection)
 
     @property
     def datasets(self):
-        return Datasets(self)
+        return Datasets(self._connection)
 
     # TODO: Model the server features as properties
+

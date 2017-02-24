@@ -16,7 +16,7 @@ class ServerPlus(Server):
             dataset_remove_list=[]
         ).json()
 
-        response = self._post('/groups/{group_id}/datasets'.format(group_id=group_id), data=data)
+        response = self.post('/groups/{group_id}/datasets'.format(group_id=group_id), data=data)
 
         if not response.ok:
             print(response.json())
