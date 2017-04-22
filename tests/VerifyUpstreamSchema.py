@@ -27,6 +27,14 @@ class TestValidationError(RuntimeError):
         return "%s: %s" % (self.__class__.__name__, self.context)
 
 
+class DescriptionEmpty(TestValidationError):
+    """The description was blank. It should be populated."""
+
+
+class DescriptionTodo(DescriptionEmpty):
+    """The description was TODO. It should be populated."""
+
+
 class Empty(TestValidationError):
     """The example or schema was blank. It should be populated."""
 
@@ -116,6 +124,21 @@ def test_example_against_schema(examplestring, schema, verb=None, path=None, ctx
             raise e
 
 
+def check_description(resource, verb=None, path=None, ctx=None):
+    context = "{} {} {}".format(verb, path, ctx)
+
+    try:
+        if resource.description is None:
+            raise DescriptionEmpty("Empty description", context=context)
+        if 'TODO' in resource.description:
+            raise DescriptionTodo("TODO description", context=context)
+        return True
+    except DescriptionEmpty as e:
+        logger.warning(str(e))
+        critical = e.innerexception
+    if critical and args.fastfail:
+        raise critical
+
 def check_body(body, verb=None, path=None, ctx=None):
     """
     A RamlBody is a set of Formats comprised of a Schema and Example, either in the Request or Response sections
@@ -166,9 +189,14 @@ def check_resources(resources, name=""):
             isness.remove('authenticated')  # unimportant for logging
 
         supportedResource = "[%s]" % ",".join(isness)
+        check_description(resources[resource], None, name + resource, supportedResource)
+
         if resources[resource].methods:
             for method in resources[resource].methods:
                 m = resources[resource].methods[method]
+
+                check_description(m, method, name + resource, supportedResource)
+
                 if method != 'get':
                     check_body(m.body, method, name + resource, supportedResource)
 
@@ -207,10 +235,6 @@ if __name__ == "__main__":
     global args
 
     logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler(sys.stderr)
-    formatter = logging.Formatter(u'%(asctime)s %(name)s[%(process)d] %(levelname)s %(message)s')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
 
     try:
         import coloredlogs

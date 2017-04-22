@@ -267,7 +267,22 @@ class Writer(object):
     def __init__(self, connection, baseobject, url=None):
         self._baseobject = baseobject
         self._connection = connection
+
         self._url = url
+        if self._url is None:
+            self._url = baseobject._url
+
+            print(baseobject._url)
+            print(str(baseobject._url))
+            print(repr(baseobject))
+            print(baseobject['_url'])
+            print(dir(baseobject))
+            print(baseobject.as_dict())
+            print(baseobject._connection)
+            print(baseobject._extended_properties['_url'])
+            if self._url is None:
+                raise AttributeError("Cannot submit object {0!r} to server without a url".format(baseobject))
+
         if not hasattr(baseobject, "to_server"):
             raise AttributeError("Passed object has no to_server() method")
 
