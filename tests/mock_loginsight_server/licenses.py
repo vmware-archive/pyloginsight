@@ -19,8 +19,6 @@ class MockedLicensesMixin(requests_mock.Adapter):
         self.register_uri('POST', '/api/v1/licenses', status_code=201, text=self.callback_add_license)
         self.register_uri('DELETE', license_url_matcher, status_code=200, text=self.callback_remove_license)
 
-        self.register_uri('GET', '/api/v1/version', text='{"releaseName": "GA","version": "1.2.3-4567890"}', status_code=200)
-
     @requiresauthentication
     def callback_list_license(self, request, context, session_id, user_id):
         return json.dumps(self.get_license_summary_object())
