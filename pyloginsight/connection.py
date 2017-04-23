@@ -141,7 +141,7 @@ class Connection(object):
 
     @classmethod
     def copy_connection(cls, connection):
-        warnings.warn(DeprecationWarning)
+        warnings.warn("copy_connection is deprecated.")
         return cls(hostname=connection._hostname,
                    port=connection._port,
                    ssl=connection._ssl,

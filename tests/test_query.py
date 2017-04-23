@@ -47,6 +47,9 @@ def test_constraint_exists():
     with warnings.catch_warnings(record=True) as w:
         assert "/x/EXISTS" == str(Constraint(field="x", operator=operator.EXISTS, value="something"))
         assert len(w) == 1
+    with warnings.catch_warnings(record=True) as w:
+        assert "/x/EXISTS" == str(Constraint(field="x", operator=operator.EXISTS))
+        assert len(w) == 0
 
 
 def test_parameters():

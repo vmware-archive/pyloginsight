@@ -37,7 +37,8 @@ class Constraint:
         if self.operator in operator._TIME and self.field != 'timestamp':
             raise(ValueError("Time operator '%s' can only be used with the 'timestamp' field." % self.operator))
         if self.operator in operator._BOOLEAN:  # Boolean operators don't include a value
-            warnings.warn("Attempted to use boolean operator with a value")
+            if self.value not in (None, ""):
+                warnings.warn("Attempted to use boolean operator with a value")
             return '/' + quote(self.field, safe="") + '/' + quote(self.operator, safe="")
         else:
             return '/' + quote(self.field, safe="") + '/' + quote(self.operator, safe="") + quote(self.value, safe="")
