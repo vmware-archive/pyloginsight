@@ -151,7 +151,7 @@ class Connection(object):
 
     def _call(self, method, url, data=None, json=None, params=None, sendauthorization=True):
         r = self._requestsession.request(method=method,
-                                         url=self._apiroot + url,
+                                         url="%s%s" % (self._apiroot, url),
                                          data=data,
                                          json=json,
                                          verify=self._verify,

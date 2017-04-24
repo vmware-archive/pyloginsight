@@ -46,6 +46,11 @@ class RemoteObjectProxy(object):
     #_url = None  # TODO: Causes test_set_attribute_under_context_with_exception to fail
     #_connection = None
 
+    _baseobject = None
+    _connection = None
+
+    __masked_properties = ["_connection", "_url", "_baseobject"]
+
     def __init__(self, **kwargs):
 
         self._extended_properties['_connection'] = "a"
@@ -54,7 +59,9 @@ class RemoteObjectProxy(object):
         print("aaaa", self.__object_attr_list__)
         self._url = url
 
+        raise RuntimeError("Not Possible.")
         self._connection = connection
+
         super(RemoteObjectProxy, self).__init__(self, **kwargs)
 
     @classmethod
@@ -73,7 +80,8 @@ class RemoteObjectProxy(object):
         instance._url = url
         print("improved instance with url", instance)
         print("bbbb", instance.__object_attr_list__)
-        instance._connection = connection
+        instance._extended_properties['_connection'] = connection
+        #instance._connection = connection
         return instance
 
     def to_server(self, connection, url=None):
@@ -83,6 +91,7 @@ class RemoteObjectProxy(object):
                 raise AttributeError("Cannot submit object to server without a url")
 
         self.validate()
+        logger.debug("About to PUT {}: {}".format(url, self.for_json()))
         response = connection.put(url, json=self.for_json())
 
     #def __setattr__(self, name, value):
@@ -91,7 +100,8 @@ class RemoteObjectProxy(object):
     #    super(RemoteObjectProxy, self).__setattr__(name, value)
 
     def __enter__(self):
-        if self._connection is None:
+        if self._connection is None and self._extended_properties['_connection'] is None:
+            print(self._extended_properties['_connection'])
             raise RuntimeError("Cannot use {0} as a content manager without a connection object.".format(self.__class__))
         url = str(self._url)
         if not url:
@@ -99,14 +109,27 @@ class RemoteObjectProxy(object):
         print("Entering __enter__")
         #self._context = self.__class__(url=self._url, **self.for_json())
         #self._context._connection = self._connection
+        self._extended_properties['_cancelled'] = False
+        return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        print("Entering __exit__")
+        print("0. What is cancelled", self._extended_properties['_cancelled'], type(self._extended_properties['_cancelled']))
+        if self._extended_properties['_cancelled']:
+            print("1 Cannelled is true-ish!", self._extended_properties['_cancelled'])
+        if self._extended_properties['_cancelled'] is False:
+            print("2 Cannelled is false!", self._extended_properties['_cancelled'])
+
         if exc_type is not None:
+            print("Exception")
             logger.warning("Dropping changes to {b} due to exception {e}".format(b=self._baseobject, e=exc_value))
-        elif self.cancelled:
+        elif self._extended_properties['_cancelled']:
+            print("3 Cancelled", self._extended_properties['_cancelled'])
+            print("4 Cancelled is false?", self._extended_properties['_cancelled'] is False)
             logger.warning("Dropping changes to {b} due to cancellation".format(b=self._baseobject))
         else:
-            self._baseobject.to_server(self._connection, self._url)
+            print("to_server")
+            self.to_server(self._connection or self._extended_properties['_connection'], self._url)
 
 
 class ExampleObject(ExampleSchema, RemoteObjectProxy):
