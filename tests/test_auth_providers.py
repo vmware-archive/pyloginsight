@@ -1,33 +1,9 @@
-import pytest
-from pyloginsight.connection import Connection, Credentials, Unauthorized
-import requests_mock
+from pyloginsight.internal import auth_providers
 
-adapter = requests_mock.Adapter()
 
-adapter.register_uri(
-    method='GET',
-    url='/api/v1/auth-providers',
-    status_code=200,
-    text='{"providers": ["Local","ActiveDirectory"]}'
-)
+def test_list(connection):
+    product = auth_providers.list(connection)
+    assert type(product) == list
+    assert len(product) >= 1
+    assert 'Local' in product
 
-adapter.register_uri(
-    method='GET',
-    url='/api/v1/auth-providers',
-    status_code=503,
-    text='{"errorMessage": "LI server should be bootstrapped to process this API call"}'
-)
-
-server = Connection(
-    hostname='mockserverlocal',
-    port=9543,
-    auth=Credentials(
-        username='admin',
-        password='admin',
-        provider='local'
-    )
-)
-server._requestsession.mount('https://', adapter=adapter)
-
-def test_providers(server):
-    assert 0 == 0
