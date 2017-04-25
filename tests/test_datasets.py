@@ -7,8 +7,7 @@ from pyloginsight.models import Server
 from pyloginsight.connection import Credentials
 
 
-pytest.mark.skip("Broken")
-
+pytestmark = pytest.mark.skip("Broken mock")
 
 GET_DATASETS_200 = '{"dataSets":[{"id":"7c677664-e373-456d-ba85-6047dfc84452","name":"vobd","description":"Events from the vobd daemon on ESXi","type":"OR","constraints":[{"name":"appname","operator":"CONTAINS","value":"vobd","fieldType":"STRING","hidden":false}]}]}'
 POST_DATASETS_400 = '{"errorMessage":"Some fields have incorrect values","errorCode":"FIELD_ERROR","errorDetails":{"name":[{"errorCode":"com.vmware.loginsight.api.errors.field_value_should_be_one_of","errorMessage":"Value should be one of (appname,hostname,procid,__li_source_path,vc_details,vc_event_type,vc_username,vc_vm_name)","errorParams":["appname","hostname","procid","__li_source_path","vc_details","vc_event_type","vc_username","vc_vm_name"]}]}}'

@@ -1,38 +1,62 @@
 import pytest
 from pyloginsight.connection import Connection, Credentials, Unauthorized
 import requests_mock
-from pyloginsight.atomic import *
 import requests
 import attr
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+
+class Cancel(RuntimeError):
+    """Update to server cancelled"""
+
+
+class RemoteObjectProxy(object):
+    @classmethod
+    def from_server(cls, connection, url):
+        body = connection.get(url)
+        obj = cls(**body)
+        obj._connection = connection
+        obj._url = url
+        return obj
+
+    def to_server(self, connection, url=None):
+        """
+        Default implementation writing to server with HTTP PUT at origin URL.
+        For alternate implementations, subclass and override.
+        """
+        if url is None:
+            url = self._url
+        return connection.put(url, json=attr.asdict(self))
+
+
+    def __enter__(self):
+        if self._connection is None:
+            raise RuntimeError("Cannot use {0} as a content manager without a connection object.".format(self.__class__))
+        url = str(self._url)
+        if not url:
+            raise AttributeError("Cannot submit object to server without a url")
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if exc_type is not None:
+            if exc_type == Cancel:
+                return True
+            logger.warning("Dropping changes to {b} due to exception {e}".format(b=self, e=exc_value))
+        else:
+            self.to_server(self._connection, self._url)
+
 
 @attr.s
-class ExampleObject(object):
+class ExampleObject(RemoteObjectProxy):
     """
     An object contains full content as attributes, and its identity (url).
     """
 
     attribute = attr.ib()
     id = attr.ib(default=None)
-    _url = attr.ib(default=None)
-
-
-    @classmethod
-    def from_server(cls, connection, url):
-        body = connection.get(url)
-        print("Got a body", body)
-        return cls(url=url, **body)
-
-    def to_server(self, connection, url=None):
-        if url is None:
-            url = self._url
-
-        body = attr.asdict(self)
-        del body['_url']
-        print("Writing body {body} to url {url}".format(body=body, url=url))
-        response = connection.put(url, json=body)
-        return response
-
-
 
 
 def test_make_empty_object():
@@ -85,3 +109,31 @@ def test_set_attribute_under_context_raw(connection):
 
     second_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
     assert second_object.attribute == 5
+
+def test_set_attribute_under_context_provided_by_object(connection):
+
+    original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
+
+    with original_object as w:
+        w.attribute = "5"
+
+    second_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
+    assert second_object.attribute == "5"
+
+def test_set_attribute_under_context_with_exception_should_not_write(connection):
+
+    original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
+
+    with pytest.raises(RuntimeError):
+        with connection.write(original_object) as w:
+            original_object.attribute = "5"
+            raise RuntimeError
+
+    with original_object as w:
+        original_object.attribute = "5"
+        raise Cancel
+
+
+    second_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
+    assert second_object.attribute == "value"
+

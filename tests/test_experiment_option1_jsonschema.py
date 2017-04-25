@@ -8,7 +8,6 @@ import json
 import pytest
 from pyloginsight.connection import Connection, Credentials, Unauthorized
 import requests_mock
-from pyloginsight.atomic import *
 import requests
 import json
 import six
@@ -40,49 +39,26 @@ SCHEMA = '''{
 ExampleSchema = make_class(SCHEMA, "Example")
 
 
+class Cancel(RuntimeError):
+    """Update to server cancelled"""
+
 
 class RemoteObjectProxy(object):
     """Base class for a remote object. Such an object has a URL, but the object gets to declare its own expected properties."""
     #_url = None  # TODO: Causes test_set_attribute_under_context_with_exception to fail
-    #_connection = None
 
-    _baseobject = None
     _connection = None
 
-    __masked_properties = ["_connection", "_url", "_baseobject"]
+    #__masked_properties = ["_connection", "_url"]
 
-    def __init__(self, **kwargs):
-
-        self._extended_properties['_connection'] = "a"
-        self._extended_properties.extend('_url')
-
-        print("aaaa", self.__object_attr_list__)
-        self._url = url
-
-        raise RuntimeError("Not Possible.")
-        self._connection = connection
-
-        super(RemoteObjectProxy, self).__init__(self, **kwargs)
 
     @classmethod
     def from_server(cls, connection, url):
-
-
-        if not url:
-            raise AttributeError("Cannot retrieve object from server without a url")
-        if not connection:
-            raise AttributeError("Cannot retrieve object from server without a Connection object")
-        print("Attempt to make a cls", cls, "with url",url,", connection",connection, "data")
-        data = connection.get(url)
-        print("data", data)
-        instance = cls(**data)
-        print("got instance", instance)
-        instance._url = url
-        print("improved instance with url", instance)
-        print("bbbb", instance.__object_attr_list__)
-        instance._extended_properties['_connection'] = connection
-        #instance._connection = connection
-        return instance
+        body = connection.get(url)
+        self = cls(**body)
+        self._extended_properties['_connection'] = connection
+        self._extended_properties['_url'] = url
+        return self
 
     def to_server(self, connection, url=None):
         if url is None:
@@ -94,14 +70,8 @@ class RemoteObjectProxy(object):
         logger.debug("About to PUT {}: {}".format(url, self.for_json()))
         response = connection.put(url, json=self.for_json())
 
-    #def __setattr__(self, name, value):
-    #    print("SetAttr", name, value)
-    #    raise RuntimeError("Got a set attr")
-    #    super(RemoteObjectProxy, self).__setattr__(name, value)
-
     def __enter__(self):
-        if self._connection is None and self._extended_properties['_connection'] is None:
-            print(self._extended_properties['_connection'])
+        if self._extended_properties['_connection'] is None:
             raise RuntimeError("Cannot use {0} as a content manager without a connection object.".format(self.__class__))
         url = str(self._url)
         if not url:
@@ -109,44 +79,28 @@ class RemoteObjectProxy(object):
         print("Entering __enter__")
         #self._context = self.__class__(url=self._url, **self.for_json())
         #self._context._connection = self._connection
-        self._extended_properties['_cancelled'] = False
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        print("Entering __exit__")
-        print("0. What is cancelled", self._extended_properties['_cancelled'], type(self._extended_properties['_cancelled']))
-        if self._extended_properties['_cancelled']:
-            print("1 Cannelled is true-ish!", self._extended_properties['_cancelled'])
-        if self._extended_properties['_cancelled'] is False:
-            print("2 Cannelled is false!", self._extended_properties['_cancelled'])
-
         if exc_type is not None:
-            print("Exception")
-            logger.warning("Dropping changes to {b} due to exception {e}".format(b=self._baseobject, e=exc_value))
-        elif self._extended_properties['_cancelled']:
-            print("3 Cancelled", self._extended_properties['_cancelled'])
-            print("4 Cancelled is false?", self._extended_properties['_cancelled'] is False)
-            logger.warning("Dropping changes to {b} due to cancellation".format(b=self._baseobject))
+            if exc_type == Cancel:
+                return True
+            logger.warning("Dropping changes to {b} due to exception {e}".format(b=self, e=exc_value))
+
         else:
-            print("to_server")
-            self.to_server(self._connection or self._extended_properties['_connection'], self._url)
+            self.to_server(self._extended_properties['_connection'], self._url)
 
 
 class ExampleObject(ExampleSchema, RemoteObjectProxy):
     """An example object that knows how to save itself to the server, but doesn't know who the server is"""
 
 
-import wrapt
+def test_make_empty_object():
+    #    with pytest.raises(TypeError):
+    failed_object = ExampleObject()
 
-
-#class CustomProxy(wrapt.ObjectProxy):
-#    def __setattr__(self, key, value):
-#        raise RuntimeError("OK!")
-#        print("Write!", key, value)
-#        return self.__wrapped__.__setattr__(key, value)
-
-
-#ExampleObject = CustomProxy(ExampleObject)
+    okobject = ExampleObject(attribute="foo")
+    assert okobject.attribute == 'foo'
 
 
 def test_get_attribute(connection):

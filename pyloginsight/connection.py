@@ -275,11 +275,9 @@ class Writer(object):
             print(baseobject._url)
             print(str(baseobject._url))
             print(repr(baseobject))
-            print(baseobject['_url'])
+            #print(baseobject['_url'])
             print(dir(baseobject))
-            print(baseobject.as_dict())
-            print(baseobject._connection)
-            print(baseobject._extended_properties['_url'])
+            #print(baseobject.as_dict())
             if self._url is None:
                 raise AttributeError("Cannot submit object {0!r} to server without a url".format(baseobject))
 
@@ -288,3 +286,4 @@ class Writer(object):
 
     def cancel(self):
         self.cancelled = True
+
