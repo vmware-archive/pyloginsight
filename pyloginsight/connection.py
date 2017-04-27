@@ -32,7 +32,7 @@ def default_user_agent():
     return "pyloginsight/{0}".format(version)
 
 
-from .exceptions import ServerError, ResourceNotFound, TransportError, Unauthorized
+from .exceptions import ResourceNotFound, TransportError, Unauthorized
 
 
 class Credentials(requests.auth.AuthBase):

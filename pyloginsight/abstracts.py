@@ -2,7 +2,7 @@
 
 import logging
 import collections
-from .exceptions import ServerError, ResourceNotFound, TransportError, Unauthorized
+from .exceptions import ResourceNotFound, TransportError, Unauthorized, Cancel
 import abc
 import attr
 import json
@@ -196,16 +196,13 @@ class ServerAddressableObject(ABC):
         raise AttributeError(name)
 
 
-
-class Cancel(RuntimeError):
-    """Update to server cancelled"""
-
-
 class RemoteObjectProxy(object):
     """
     Base class for a remote object. Such an object has a URL, but the object gets to declare its own expected properties.
 
-    Compatible with objects based on both Attribs and Python-JsonSchema-Objects
+    Compatible with objects based on both Attribs and Python-JsonSchema-Objects.
+
+    For simple resources consisting of a single value, use ::ServerProperty:: instead.
     """
 
     __connection = None
