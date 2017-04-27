@@ -5,10 +5,19 @@ import collections
 from .exceptions import ServerError, ResourceNotFound, TransportError, Unauthorized
 import abc
 import attr
-
+import json
+import python_jsonschema_objects
 
 logger = logging.getLogger(__name__)
 ABC = abc.ABCMeta('ABC', (object,), {})
+
+
+def make_class(schema, title):
+    s4 = json.loads(schema)
+    s4["title"] = title
+    builder = python_jsonschema_objects.ObjectBuilder(s4)
+    ns = builder.build_classes()
+    return getattr(ns, title)
 
 
 class ServerDictMixin(collections.MutableMapping):
@@ -185,6 +194,69 @@ class ServerAddressableObject(ABC):
         if name in t:
             return t[name]
         raise AttributeError(name)
+
+
+
+class Cancel(RuntimeError):
+    """Update to server cancelled"""
+
+
+class RemoteObjectProxy(object):
+    """
+    Base class for a remote object. Such an object has a URL, but the object gets to declare its own expected properties.
+
+    Compatible with objects based on both Attribs and Python-JsonSchema-Objects
+    """
+
+    __connection = None
+    __url = None
+
+    @classmethod
+    def from_server(cls, connection, url):
+        body = connection.get(url)
+        self = cls(**body)
+
+        # Can't access directly, as validator borrows the setattr/getattribute interface.
+        object.__setattr__(self, "__connection", connection)
+        object.__setattr__(self, "__url", url)
+        return self
+
+    def _serialize(self):
+        if hasattr(self, "validate"):
+            self.validate()
+        if hasattr(self, "for_json"):
+            return self.for_json()
+        return attr.asdict(self)
+
+    def to_server(self, connection, url=None):
+
+        if url is None:
+            url = str(object.__getattribute__(self, "__url"))
+            if url is None:
+                raise AttributeError("Cannot submit object to server without a url")
+
+        return connection.put(url, json=self._serialize())
+
+    def __enter__(self):
+        connection = object.__getattribute__(self, "__connection")
+        if connection is None:
+            raise RuntimeError("Cannot use {0} as a content manager without a connection object.".format(self.__class__))
+        url = str(self.__url)
+        if not url:
+            raise AttributeError("Cannot submit object to server without a url")
+        # Consider returning a deep copy.
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if exc_type is not None:
+            if exc_type == Cancel:
+                return True
+            logger.warning("Dropping changes to {b} due to exception {e}".format(b=self, e=exc_value))
+
+        else:
+            connection = object.__getattribute__(self, "__connection")
+            self.to_server(connection, self.__url)
+
 
 class ServerProperty(object):
     """
