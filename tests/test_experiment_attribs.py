@@ -4,52 +4,10 @@ import requests_mock
 import requests
 import attr
 import logging
+from test_experiment_option1_jsonschema import RemoteObjectProxy, Cancel
 
 
 logger = logging.getLogger(__name__)
-
-
-class Cancel(RuntimeError):
-    """Update to server cancelled"""
-
-
-class RemoteObjectProxy(object):
-    __connection = None
-
-    @classmethod
-    def from_server(cls, connection, url):
-        body = connection.get(url)
-        obj = cls(**body)
-        obj.__connection = connection
-        obj.__url = url
-        return obj
-
-    def to_server(self, connection, url=None):
-        """
-        Default implementation writing to server with HTTP PUT at origin URL.
-        For alternate implementations, subclass and override.
-        """
-        if url is None:
-            url = self.__url
-
-        return connection.put(url, json=attr.asdict(self))
-
-
-    def __enter__(self):
-        if self.__connection is None:
-            raise RuntimeError("Cannot use {0} as a content manager without a connection object.".format(self.__class__))
-        url = str(self.__url)
-        if not url:
-            raise AttributeError("Cannot submit object to server without a url")
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        if exc_type is not None:
-            if exc_type == Cancel:
-                return True
-            logger.warning("Dropping changes to {b} due to exception {e}".format(b=self, e=exc_value))
-        else:
-            self.to_server(self.__connection, self.__url)
 
 
 @attr.s

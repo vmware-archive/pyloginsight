@@ -11,6 +11,8 @@ import requests_mock
 import requests
 import json
 import six
+import attr
+
 
 
 logger = logging.getLogger(__name__)
@@ -44,40 +46,40 @@ class Cancel(RuntimeError):
 
 
 class RemoteObjectProxy(object):
-    """Base class for a remote object. Such an object has a URL, but the object gets to declare its own expected properties."""
+    """
+    Base class for a remote object. Such an object has a URL, but the object gets to declare its own expected properties.
+
+    Compatible with objects based on both Attribs and Python-JsonSchema-Objects
+    """
 
     __connection = None
     __url = None
-
-    #__masked_properties = ["__connection", "_url"]
-
-    #@property
-    #def __connection_store(self):
-    #    return object.__getattribute__(self, "__connection")
-
-    #@__connection_store.setter
-    #def __set_connection_store(self, connection):
-    #    object.__setattr__(self, "__connection", connection)
 
     @classmethod
     def from_server(cls, connection, url):
         body = connection.get(url)
         self = cls(**body)
 
-        # Can't access directly, as python_jsonschema_objects borrows the setattr/getattribute interface.
+        # Can't access directly, as validator borrows the setattr/getattribute interface.
         object.__setattr__(self, "__connection", connection)
         object.__setattr__(self, "__url", url)
-
         return self
 
+    def __serialize(self):
+        if hasattr(self, "validate"):
+            self.validate()
+        if hasattr(self, "for_json"):
+            return self.for_json()
+        return attr.asdict(self)
+
     def to_server(self, connection, url=None):
+
         if url is None:
             url = str(object.__getattribute__(self, "__url"))
-            if not url:
+            if url is None:
                 raise AttributeError("Cannot submit object to server without a url")
 
-        self.validate()
-        return connection.put(url, json=self.for_json())
+        return connection.put(url, json=self.__serialize())
 
     def __enter__(self):
         connection = object.__getattribute__(self, "__connection")
