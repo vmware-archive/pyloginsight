@@ -45,40 +45,48 @@ class Cancel(RuntimeError):
 
 class RemoteObjectProxy(object):
     """Base class for a remote object. Such an object has a URL, but the object gets to declare its own expected properties."""
-    #_url = None  # TODO: Causes test_set_attribute_under_context_with_exception to fail
 
-    _connection = None
+    __connection = None
+    __url = None
 
-    #__masked_properties = ["_connection", "_url"]
+    #__masked_properties = ["__connection", "_url"]
 
+    #@property
+    #def __connection_store(self):
+    #    return object.__getattribute__(self, "__connection")
+
+    #@__connection_store.setter
+    #def __set_connection_store(self, connection):
+    #    object.__setattr__(self, "__connection", connection)
 
     @classmethod
     def from_server(cls, connection, url):
         body = connection.get(url)
         self = cls(**body)
-        self._extended_properties['_connection'] = connection
-        self._extended_properties['_url'] = url
+
+        # Can't access directly, as python_jsonschema_objects borrows the setattr/getattribute interface.
+        object.__setattr__(self, "__connection", connection)
+        object.__setattr__(self, "__url", url)
+
         return self
 
     def to_server(self, connection, url=None):
         if url is None:
-            url = str(self._url)
+            url = str(object.__getattribute__(self, "__url"))
             if not url:
                 raise AttributeError("Cannot submit object to server without a url")
 
         self.validate()
-        logger.debug("About to PUT {}: {}".format(url, self.for_json()))
-        response = connection.put(url, json=self.for_json())
+        return connection.put(url, json=self.for_json())
 
     def __enter__(self):
-        if self._extended_properties['_connection'] is None:
+        connection = object.__getattribute__(self, "__connection")
+        if connection is None:
             raise RuntimeError("Cannot use {0} as a content manager without a connection object.".format(self.__class__))
-        url = str(self._url)
+        url = str(self.__url)
         if not url:
             raise AttributeError("Cannot submit object to server without a url")
-        print("Entering __enter__")
-        #self._context = self.__class__(url=self._url, **self.for_json())
-        #self._context._connection = self._connection
+        # Consider returning a deep copy.
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
@@ -88,7 +96,8 @@ class RemoteObjectProxy(object):
             logger.warning("Dropping changes to {b} due to exception {e}".format(b=self, e=exc_value))
 
         else:
-            self.to_server(self._extended_properties['_connection'], self._url)
+            connection = object.__getattribute__(self, "__connection")
+            self.to_server(connection, self.__url)
 
 
 class ExampleObject(ExampleSchema, RemoteObjectProxy):
@@ -126,30 +135,7 @@ def test_set_attribute_and_write(connection):
     assert new_object.attribute == "newname"
 
 
-
 def test_set_attribute_under_context(connection):
-
-    original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
-
-    with connection.write(original_object, url="/example/12345678-90ab-cdef-1234-567890abcdef") as w:
-        w.attribute = "5"
-
-    second_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
-    assert second_object.attribute == "5"
-
-
-def test_set_attribute_under_context_with_automatic_url(connection):
-
-    original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
-
-    with connection.write(original_object) as w:
-        w.attribute = "5"
-
-    second_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
-    assert second_object.attribute == "5"
-
-
-def test_set_attribute_under_context_provided_by_object(connection):
 
     original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
 
@@ -164,8 +150,8 @@ def test_set_attribute_under_context_with_exception_should_not_write(connection)
     original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
 
     with pytest.raises(RuntimeError):
-        with connection.write(original_object) as w:
-            original_object.attribute = "5"
+        with original_object as w:
+            w.attribute = "5"
             raise RuntimeError
 
     second_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
@@ -191,5 +177,15 @@ def test_instance_repr(connection):
     x = repr(original_object)
 
     assert "ExampleObject" in x
-    assert "url" in x
-    assert "12345678" in x
+    assert "url" not in x
+    assert "12345678-90ab-cdef-1234-567890abcdef" not in x
+
+
+def test_instance_dir(connection):
+    original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
+
+    print(original_object)
+    print(dir(original_object))
+
+    assert 'attribute' in str(original_object)
+    assert 'connection' not in str(original_object)

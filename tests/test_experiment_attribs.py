@@ -14,12 +14,14 @@ class Cancel(RuntimeError):
 
 
 class RemoteObjectProxy(object):
+    __connection = None
+
     @classmethod
     def from_server(cls, connection, url):
         body = connection.get(url)
         obj = cls(**body)
-        obj._connection = connection
-        obj._url = url
+        obj.__connection = connection
+        obj.__url = url
         return obj
 
     def to_server(self, connection, url=None):
@@ -28,14 +30,15 @@ class RemoteObjectProxy(object):
         For alternate implementations, subclass and override.
         """
         if url is None:
-            url = self._url
+            url = self.__url
+
         return connection.put(url, json=attr.asdict(self))
 
 
     def __enter__(self):
-        if self._connection is None:
+        if self.__connection is None:
             raise RuntimeError("Cannot use {0} as a content manager without a connection object.".format(self.__class__))
-        url = str(self._url)
+        url = str(self.__url)
         if not url:
             raise AttributeError("Cannot submit object to server without a url")
         return self
@@ -46,7 +49,7 @@ class RemoteObjectProxy(object):
                 return True
             logger.warning("Dropping changes to {b} due to exception {e}".format(b=self, e=exc_value))
         else:
-            self.to_server(self._connection, self._url)
+            self.to_server(self.__connection, self.__url)
 
 
 @attr.s
@@ -54,7 +57,6 @@ class ExampleObject(RemoteObjectProxy):
     """
     An object contains full content as attributes, and its identity (url).
     """
-
     attribute = attr.ib()
     id = attr.ib(default=None)
 
@@ -90,25 +92,17 @@ def test_set_attribute(connection):
     assert second_object.attribute == 5
 
 
-def test_set_attribute_under_context(connection):
-
+@pytest.mark.xfail(reason="Implementation doesn't copy yet.", run=True)
+def test_set_attribute_on_copy(connection):
     original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
-
-    with connection.write(original_object) as w:
-        w.attribute = 5
-
-    second_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
-    assert second_object.attribute == 5
-
-def test_set_attribute_under_context_raw(connection):
-
-    original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
+    assert original_object.attribute != 5
 
     with connection.write(original_object) as w:
         original_object.attribute = 5
 
     second_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
-    assert second_object.attribute == 5
+    assert second_object.attribute != 5
+
 
 def test_set_attribute_under_context_provided_by_object(connection):
 
@@ -120,20 +114,40 @@ def test_set_attribute_under_context_provided_by_object(connection):
     second_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
     assert second_object.attribute == "5"
 
+
 def test_set_attribute_under_context_with_exception_should_not_write(connection):
 
     original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
 
     with pytest.raises(RuntimeError):
-        with connection.write(original_object) as w:
-            original_object.attribute = "5"
+        with original_object as w:
+            w.attribute = 5
             raise RuntimeError
 
     with original_object as w:
-        original_object.attribute = "5"
+        w.attribute = 5
         raise Cancel
-
 
     second_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
     assert second_object.attribute == "value"
 
+
+def test_instance_repr(connection):
+
+    original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
+
+    x = repr(original_object)
+
+    assert "ExampleObject" in x
+    assert "url" not in x
+    assert "12345678-90ab-cdef-1234-567890abcdef" not in x
+
+
+def test_instance_dir(connection):
+    original_object = ExampleObject.from_server(connection, url="/example/12345678-90ab-cdef-1234-567890abcdef")
+
+    print(original_object)
+    print(dir(original_object))
+
+    assert 'attribute' in str(original_object)
+    assert 'connection' not in str(original_object)

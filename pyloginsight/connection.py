@@ -242,48 +242,6 @@ class Connection(object):
         """Human-readable and machine-executable description of the current connection."""
         return '{cls}(hostname={x._hostname!r}, port={x._port!r}, ssl={x._ssl!r}, verify={x._verify!r}, auth={x._authprovider!r})'.format(cls=self.__class__.__name__, x=self)
 
-    def write(self, baseobject, url=None):
-        return Writer(connection=self, baseobject=baseobject, url=url)
-
     @property
     def server(self):
         return Server(self)
-
-
-class Writer(object):
-    cancelled = False
-
-    def __enter__(self):
-        return self._baseobject
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is not None:
-            logger.warning("Dropping changes to {b} due to exception {e}".format(b=self._baseobject, e=exc_value))
-        elif self.cancelled:
-            logger.warning("Dropping changes to {b} due to cancellation".format(b=self._baseobject))
-        else:
-            self._baseobject.to_server(self._connection, self._url)
-
-    def __init__(self, connection, baseobject, url=None):
-        self._baseobject = baseobject
-        self._connection = connection
-
-        self._url = url
-        if self._url is None:
-            self._url = baseobject._url
-
-            print(baseobject._url)
-            print(str(baseobject._url))
-            print(repr(baseobject))
-            #print(baseobject['_url'])
-            print(dir(baseobject))
-            #print(baseobject.as_dict())
-            if self._url is None:
-                raise AttributeError("Cannot submit object {0!r} to server without a url".format(baseobject))
-
-        if not hasattr(baseobject, "to_server"):
-            raise AttributeError("Passed object has no to_server() method")
-
-    def cancel(self):
-        self.cancelled = True
-
