@@ -22,6 +22,29 @@
 from . import operators as operator
 from requests.utils import quote
 import warnings
+from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin
+
+
+class Queries(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
+    _baseurl = "/queries"
+
+    def _get_token(self):
+        resp = self._connection._get(self._baseurl + "/token/new")
+        if resp.status_code not in [200]:
+            raise ValueError(resp.json()['errorMessage'])
+        return resp.json()['cancelToken']
+
+    def append(self, piql):
+        """A list-like interface for creating a new query.
+        The server will assign a new Query Token when inserting into the mapping.
+        A subsequent request to keys/iter will contain the new license in the value."""
+
+        resp = self._connection._post(self._baseurl, json={"query": piql})
+        if resp.status_code in [400, 409, 500]:
+            raise ValueError(resp.json()['errorMessage'])
+        elif resp.status_code == 201:
+            return True
+        raise NotImplementedError("Unhandled status")
 
 
 class Constraint:
