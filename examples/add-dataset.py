@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
-import pyloginsight.models as pyli
+from pyloginsight.connection import Connection, Credentials
 
 
 if __name__ == "__main__":
@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    creds = pyli.Credentials(username=args.username, password=args.password, provider=args.provider)
-    server = pyli.Server(hostname=args.server, verify=False, auth=creds)
+    creds = Credentials(username=args.username, password=args.password, provider=args.provider)
+    conn = Connection(hostname=args.server, verify=False, auth=creds)
 
-    server.datasets.append(name=args.name, description=args.description, field=args.field, value=args.value)
+    conn.server.datasets.append(name=args.name, description=args.description, field=args.field, value=args.value)

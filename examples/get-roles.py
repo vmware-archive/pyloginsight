@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 
-from pyloginsight.models import Server, Credentials
+from pyloginsight.connection import Connection, Credentials
 
 import argparse
 import pprint
@@ -17,6 +17,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     creds = Credentials(username=args.username, password=args.password, provider=args.provider)
-    server = Server(hostname=args.server, verify=False, auth=creds)
+    conn = Connection(hostname=args.server, verify=False, auth=creds)
 
-    pprint.pprint({k: v for (k, v) in server.roles.items()})
+    pprint.pprint({k: v for (k, v) in conn.server.roles.items()})
