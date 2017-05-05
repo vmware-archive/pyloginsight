@@ -1,5 +1,5 @@
 import pytest
-from pyloginsight.models import Server, AlternateLicenseKeys
+from pyloginsight.models import AlternateLicenseKeys
 import logging
 
 

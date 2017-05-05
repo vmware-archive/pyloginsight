@@ -1,19 +1,10 @@
 from __future__ import print_function
-import python_jsonschema_objects
-import sys
 import logging
-import json
-
-
 import pytest
-from pyloginsight.connection import Connection, Credentials, Unauthorized
-import requests_mock
-import requests
 import json
-import six
 import attr
 
-from pyloginsight.abstracts import RemoteObjectProxy, Cancel, make_class
+from pyloginsight.abstracts import RemoteObjectProxy, make_class
 
 
 logger = logging.getLogger(__name__)

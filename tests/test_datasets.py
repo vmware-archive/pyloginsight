@@ -3,8 +3,6 @@
 
 import pytest
 import requests_mock
-from pyloginsight.models import Server
-from pyloginsight.connection import Credentials
 
 
 pytestmark = pytest.mark.skip("Broken mock")

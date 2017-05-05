@@ -1,8 +1,7 @@
 import requests_mock
-from collections import Counter
 import json
 import logging
-from .utils import RandomDict, requiresauthentication, trailing_guid_pattern, license_url_matcher
+from .utils import requiresauthentication
 
 mockserverlogger = logging.getLogger("LogInsightMockAdapter")
 

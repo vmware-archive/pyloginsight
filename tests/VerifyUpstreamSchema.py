@@ -6,7 +6,6 @@ from __future__ import print_function
 import logging
 import json
 import jsonschema
-import sys
 import argparse
 import collections
 

@@ -1,5 +1,5 @@
 import pytest
-from pyloginsight.models import Version, Server
+from pyloginsight.models import Version
 from distutils.version import StrictVersion
 
 
