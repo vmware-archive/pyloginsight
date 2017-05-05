@@ -28,6 +28,19 @@ import json
 logger = logging.getLogger(__name__)
 
 
+def named_tuple_with_defaults(name, fields, values=()):
+    new_class = collections.namedtuple(name, fields)
+    new_class.__new__.__defaults__ = (None,) * len(new_class._fields)
+
+    if isinstance(values, collections.Mapping):
+        prototype = new_class(**values)
+    else:
+        prototype = new_class(*values)
+
+    new_class.__new__.__defaults__ = tuple(prototype)
+    return new_class
+
+
 class LicenseKeys(collections.MutableMapping):
     """A server-backed dictionary (hashmap) of items embedded in the
     Adding, deleting or updating an item usually means POST/PUTing a single item's resource."""
