@@ -36,15 +36,14 @@ class TestConnection():
 
         connection._requestsession.mount('https://', adapter)
 
-        r = connection._post("/demand_auth", data="submitbody")
+        r = connection.post("/demand_auth", data="submitbody")
 
         assert adapter_sessions.call_count == 1
         assert adapter_success.call_count == 1
         assert adapter_failed.call_count == 1
 
         # Retrieved protected resource
-        assert r.status_code == 200
-        assert r.text == "protected resource"
+        assert r == "protected resource"
 
         # No headers leaked
         assert "Authorization" not in connection._requestsession.headers
@@ -71,7 +70,7 @@ class TestConnection():
         connection._requestsession.mount('https://', adapter)
 
         with pytest.raises(Unauthorized) as excinfo:
-            connection._post("/demand_auth", data="submitbody")
+            connection.post("/demand_auth", data="submitbody")
 
         assert excinfo.value.args[0] == 'Authentication failed'
         assert excinfo.value.args[1].status_code == 401
@@ -103,7 +102,7 @@ class TestConnection():
         connection._requestsession.mount('https://', adapter)
 
         with pytest.raises(Unauthorized) as excinfo:
-            connection._post("/demand_auth", data="submitbody")
+            connection.post("/demand_auth", data="submitbody")
 
         assert excinfo.value.args[0] == 'Authentication failed'
         assert excinfo.value.args[1].status_code == 200

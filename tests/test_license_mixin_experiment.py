@@ -1,5 +1,5 @@
 import pytest
-from pyloginsight.models import Server, AlternateLicenseKeys
+from pyloginsight.models import AlternateLicenseKeys
 import logging
 
 
@@ -23,7 +23,6 @@ def test_retrieve_license_list_demands_authentication(connection):
 
     assert len(mockserver.sessions_known) == previous_quantity + 1  # 1 logged in user, me
     assert MY_USER_ID in mockserver.session_inspection_user_list()
-    assert MY_USER_ID == Server.copy_connection(connection).current_session['userId']
 
 
 def test_append_license(connection):

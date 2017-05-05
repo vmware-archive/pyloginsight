@@ -64,7 +64,7 @@ setup(
     url='http://github.com/vmware/pyloginsight/',
     license='Apache Software License 2.0',
     author='Alan Castonguay',
-    install_requires=['requests', 'ramlfications', 'six', 'jsonschema'],
+    install_requires=['requests', 'ramlfications', 'six', 'jsonschema==2.3.0', 'python-jsonschema-objects'],
     tests_require=["requests_mock", "pytest", "pytest-catchlog", "pytest-flakes", "pytest-pep8"],
     description='VMware vRealize Log Insight Client',
     author_email='acastonguay@vmware.com',

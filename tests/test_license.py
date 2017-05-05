@@ -29,7 +29,7 @@ def authenticatedconnection():
     credentials = Credentials(username="admin", password="pass", provider="mock")
     connection = Server("mockserverlocal", auth=credentials)
     connection._requestsession.mount('https://', adapter)
-    connection._get("/sessions/current")
+    connection.get("/sessions/current")
     return connection
 
 
