@@ -2,7 +2,7 @@
 
 import logging
 import collections
-from .exceptions import ResourceNotFound, TransportError, Unauthorized, Cancel
+from .exceptions import ResourceNotFound, Cancel
 import abc
 import attr
 import json
@@ -30,7 +30,7 @@ class ServerDictMixin(collections.MutableMapping):
     """
     def __delitem__(self, item):
         try:
-            resp = self._connection.delete("{0}/{1}".format(self._baseurl, item))
+            self._connection.delete("{0}/{1}".format(self._baseurl, item))
         except ResourceNotFound:
             raise KeyError(item)
         return True

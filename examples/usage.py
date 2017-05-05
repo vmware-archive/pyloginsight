@@ -23,7 +23,6 @@ class User(object):
         del self._context
 
 
-
 class generalized_save(object):
     def __init__(self, original):
         self.data = copy_of(original)

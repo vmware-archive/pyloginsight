@@ -50,14 +50,15 @@ class LicenseKeys(collections.MutableMapping):
         self._baseurl = baseurl
 
     def __delitem__(self, item):
-        resp = self._connection.delete("{0}/{1}".format(self._baseurl, item))
+        self._connection.delete("{0}/{1}".format(self._baseurl, item))
         return True
 
     def append(self, licensekey):
         """A list-like interface for addding a new licence.
         The server will assign a new UUID when inserting into the mapping.
         A subsequent request to keys/iter will contain the new license in the value."""
-        resp = self._connection.post(self._baseurl, json={"key": licensekey})
+        self._connection.post(self._baseurl, json={"key": licensekey})
+        # TODO: We should really use the response since it contains the UUID.
         return True
 
     def __getitem__(self, item):
@@ -103,7 +104,7 @@ class AlternateLicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAdd
         return self.asdict().get("licenses")
 
 
-class Version(ServerAddressableObject, StrictVersion):
+class LegacyVersion(ServerAddressableObject, StrictVersion):
     """Server's self-reported current version number."""
     _baseurl = "/version"
 
@@ -203,16 +204,6 @@ class Dataset(ServerAddressableObject):
                        '"Events from the vobd daemon on ESXi",' \
                        '"type":"OR",' \
                        '"constraints":[{"name":"appname","operator":"CONTAINS","value":"vobd","fieldType":"STRING","hidden":false}]}]}'
-
-
-class Dataset(object):
-    def __init__(self, name, description, type, id=None, constraints=[]):
-        self.name = name
-        self.description = description
-        self.type = type
-        self.id = id
-        self.constraints = constraints
-
 
 
 class Datasets(collections.MutableMapping):
