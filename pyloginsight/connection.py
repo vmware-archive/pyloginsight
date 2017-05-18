@@ -149,11 +149,12 @@ class Connection(object):
                    auth=connection._authprovider,
                    existing_session=connection._requestsession)
 
-    def _call(self, method, url, data=None, json=None, params=None, sendauthorization=True):
+    def _call(self, method, url, data=None, json=None, params=None, sendauthorization=True, headers=None):
         r = self._requestsession.request(method=method,
                                          url="%s%s" % (self._apiroot, url),
                                          data=data,
                                          json=json,
+                                         headers=headers,
                                          verify=self._verify,
                                          auth=self._authprovider if sendauthorization else None,
                                          params=params)
@@ -196,7 +197,7 @@ class Connection(object):
             raise TransportError(r.status_code, payload)
 
 
-    def post(self, url, data=None, json=None, params=None, sendauthorization=True):
+    def post(self, url, data=None, json=None, params=None, sendauthorization=True, headers=None):
         """
         Attempt to post to server with current authorization credentials.
         If post fails with HTTP 401 Unauthorized, authenticate and retry.
@@ -205,6 +206,7 @@ class Connection(object):
                           url=url,
                           data=data,
                           json=json,
+                          headers=headers,
                           sendauthorization=sendauthorization,
                           params=params)
 
