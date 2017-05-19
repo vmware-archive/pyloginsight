@@ -4,8 +4,9 @@ import argparse
 import logging
 import requests
 import getpass
+import warnings
 
-import pyloginsight.internal.config as li_config
+from pyloginsight.internal import config, users, groups, datasets, content
 
 from pyloginsight.connection import Connection, Credentials
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -16,6 +17,9 @@ logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 logging.info("Suppressing SSL warnings.")
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+logging.info('Suppressing API warnings.')
+warnings.simplefilter('ignore')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--source-username', required=True)
@@ -43,12 +47,26 @@ dst_creds = Credentials(
 )
 dst_conn = Connection(hostname=args.destination_server, verify=False, auth=dst_creds)
 
-logging.info('Exporting cluster configuration.')
-src_config = li_config.export_cluster_configuration(src_conn)
+logging.info('Confirming that source and destination are the same version.')
+assert dst_conn.server.version == src_conn.server.version
 
-logging.info('Importing cluster configuration.')
-li_config.import_cluster_configuration(dst_conn, src_config)
+logging.info('Exporting source cluster configuration.')
+src_config = config.download(src_conn)
 
+logging.info('Exporting source groups (roles).')
+src_groups = [groups.get(src_conn, group_id) for group_id in groups.list(src_conn)]
+
+logging.info('Exporting source datasets.')
+src_datasets = [datasets.get(src_conn, dataset_id) for dataset_id in datasets.list(src_conn)]
+
+logging.info('Exporting source users.')
+src_users = [users.get(src_conn, user_id) for user_id in users.list(src_conn)]
+
+logging.info('Exporting source content.')
+src_content = [content.get(src_conn, content_id) for content_id in content.list(src_conn)]
+
+#logging.info('Importing source cluster configuration to destination.')
+#config.upload(dst_conn, src_config)
 
 
 #TODO: GET groups on source
