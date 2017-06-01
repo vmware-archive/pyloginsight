@@ -1,3 +1,6 @@
+import logging
+import time
+
 def list(conn):
     """
     Given a connection, return a list of group ids.
@@ -16,12 +19,16 @@ def get(conn, id):
     :param id: A group id.
     :return: A dictionary describing the group with the provided id.
     """
-    return {
+    t0 = time.perf_counter()
+    product = {
         'summary': dict(conn.get('/groups/{id}'.format(id=id))),
         'datasets': [x['id'] for x in conn.get('/groups/{id}/datasets'.format(id=id))['dataSets']],
         'users': [x['id'] for x in conn.get('/groups/{id}/users'.format(id=id))['users']],
         'capabilities': [x['id'] for x in conn.get('/groups/{id}/capabilities'.format(id=id))['capabilities']]
     }
+    t1 = time.perf_counter()
+    #logging.info("Get dataset took {:4f}".format(t1-t0))
+    return product
 
 
 def name_to_ids(conn, name):
@@ -32,6 +39,7 @@ def name_to_ids(conn, name):
     :param name: A name of one or more groups.
     :return: A list of group ids.
     """
+    logging.info('Getting group (role) {id}'.format(id=id))
     return [group['id'] for group in conn.get(url='/groups')['groups'] if group['name'] == name]
 
 
@@ -50,5 +58,7 @@ def create(conn, name, capabilities):
         "name": "users",
         "capabilities": ["ANALYTICS", "DASHBOARD"]
     }
-    """
+    
     return conn.post(url='/groups', json={'name': name, 'capabilities': capabilities})['group']['id']
+    """
+    raise NotImplemented

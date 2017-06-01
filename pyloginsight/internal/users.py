@@ -1,3 +1,6 @@
+import logging
+import time
+
 def list(conn):
     """
     Given a connection, return a list of user id values.
@@ -11,13 +14,43 @@ def list(conn):
 def get(conn, id):
     """ Given a connection and a user id, return a dictionary describing the user, including datasets, roles, capabilities, 
     and content. """
+
+    logging.info("Get information for user {id}".format(id=id))
+
+    t0 = time.perf_counter()
+    summary = conn.get('/users/{id}'.format(id=id))
+    t1 = time.perf_counter()
+    logging.info("Get summary took {:4f} seconds.".format(t1-t0))
+
+    t0 = time.perf_counter()
+    datasets = [x['id'] for x in conn.get('/users/{id}/datasets'.format(id=id))['dataSets']]
+    t1 = time.perf_counter()
+    logging.info("Get dataset took {:4f} seconds.".format(t1-t0))
+
+    t0 = time.perf_counter()
+    groups = [x['id'] for x in conn.get('/users/{id}/groups'.format(id=id))['groups']]
+    t1 = time.perf_counter()
+    logging.info("Get groups took {:4f} seconds.".format(t1-t0))
+
+    t0 = time.perf_counter()
+    capabilities = [x['id'] for x in conn.get('/users/{id}/capabilities'.format(id=id))['capabilities']]
+    t1 = time.perf_counter()
+    logging.info("Get capabilities took {:4f} seconds.".format(t1-t0))
+
+    t0 = time.perf_counter()
+    content = conn.get(url='/content/usercontent/{id}?namespace=com.private.content.{id}'.format(id=id))
+    t1 = time.perf_counter()
+    logging.info("Get content took {:4f} seconds.".format(t1-t0))
+
+
     return {
-        'summary': dict(conn.get('/users/{id}'.format(id=id))),
-        'datasets': [x['id'] for x in conn.get('/users/{id}/datasets'.format(id=id))['dataSets']],
-        'groups': [x['id'] for x in conn.get('/users/{id}/groups'.format(id=id))['groups']],
-        'capabilities': [x['id'] for x in conn.get('/users/{id}/capabilities'.format(id=id))['capabilities']],
-        'content': conn.get(url='/content/usercontent/{id}?namespace=com.private.content.{id}'.format(id=id))
+        'summary': summary,
+        'datasets': datasets,
+        'groups': groups,
+        'capabilities': capabilities,
+        'content': content
     }
+
 
 
 def name_to_ids(conn, name):
@@ -44,6 +77,7 @@ def create(conn, name, password, email, groups, generate_api_key=False):
     :return: The id of the user as a string.
     """
 
+    """
     return conn.post(url='/users', json={
         'username': name,
         'password': password,
@@ -51,3 +85,5 @@ def create(conn, name, password, email, groups, generate_api_key=False):
         'groupIds': groups,
         'generateApiKey': generate_api_key
     })['user']['id']
+    """
+    raise NotImplemented

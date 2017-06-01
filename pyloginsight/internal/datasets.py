@@ -1,3 +1,6 @@
+import logging
+import time
+
 def list(conn):
     """
     Given a connection, return a list of dataset ids.
@@ -16,7 +19,11 @@ def get(conn, id):
     :param id: A dataset id.
     :return: A dictionary describing the dataset with the provided id.
     """
-    return dict(conn.get('/datasets/{id}'.format(id=id)))
+    t0 = time.perf_counter()
+    product = conn.get('/datasets/{id}'.format(id=id))
+    t1 = time.perf_counter()
+    #logging.info("Get dataset took {:4f}".format(t1-t0))
+    return product
 
 
 def name_to_ids(conn, name):
@@ -44,5 +51,8 @@ def create(conn, name, description, constraints):
     """
     constraints = [{'name': field, 'operator': 'CONTAINS', 'value': value, 'fieldType': 'STRING'}]
     data = json.dumps({'name': name, 'description': description, 'constraints': constraints})
+    
+    return conn.post(url='/datasets', json={'name': name, 'description': description, 'constraints': json.dumps(constraints)})['dataSet']['id']
     """
-    return conn.post(url='/datasets', json={'name': name, 'description': description, 'constraints': constraints})['dataSet']['id']
+    raise NotImplemented
+

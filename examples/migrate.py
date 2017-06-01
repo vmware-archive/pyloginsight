@@ -5,6 +5,7 @@ import logging
 import requests
 import getpass
 import warnings
+import time
 
 from pyloginsight.internal import config, users, groups, datasets, content
 
@@ -13,7 +14,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 
 # Configuring logging date/time format.
-logging.basicConfig(format='%(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
 
 logging.info("Suppressing SSL warnings.")
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -54,21 +55,25 @@ logging.info('Exporting source cluster configuration.')
 src_config = config.download(src_conn)
 
 logging.info('Exporting source groups (roles).')
-src_groups = [groups.get(src_conn, group_id) for group_id in groups.list(src_conn)]
+src_groups = [groups.get(src_conn, group_id) for group_id in groups.list(src_conn)[:5]]
 
 logging.info('Exporting source datasets.')
-src_datasets = [datasets.get(src_conn, dataset_id) for dataset_id in datasets.list(src_conn)]
+src_datasets = [datasets.get(src_conn, dataset_id) for dataset_id in datasets.list(src_conn)[:5]]
 
 logging.info('Exporting source users.')
-src_users = [users.get(src_conn, user_id) for user_id in users.list(src_conn)]
+src_users = [users.get(src_conn, user_id) for user_id in users.list(src_conn)[:5]]
 
 logging.info('Exporting source content.')
-src_content = [content.get(src_conn, content_id) for content_id in content.list(src_conn)]
+src_content = [content.get(src_conn, content_id) for content_id in content.list(src_conn)[:5]]
 
 logging.info('Importing source cluster configuration to destination.')
 config.upload(dst_conn, src_config)
 
-logging.info('Creating groups on destination.')
+logging.info('Importing source cluster content to destination.')
+dst_content = [(pack, content.create(dst_conn, pack)) for pack in src_content]
+
+logging.info('Skipped: Creating groups on destination.')
+"""
 src_to_dst_group_mapping = {}
 for group in src_groups:
     try:
@@ -82,10 +87,11 @@ for group in src_groups:
 
     except ValueError:
         logging.info('Error creating "{name}" group.'.format(name=group['summary']['group']['name']))
+"""
 
 
-
-logging.info('Creating datasets on destination.')
+logging.info('Skipped: Creating datasets on destination.')
+"""
 src_to_dst_dataset_mapping = {}
 for dataset in src_datasets:
     try:
@@ -113,7 +119,9 @@ for dataset in src_datasets:
         logging.info('Error creating "{name}" dataset.'.format(name=dataset['dataSet']['name']))
 
 """
-logging.info('Creating users on destination.')
+
+logging.info('Skipped: Creating users on destination.')
+"""
 for user in src_users:
     try:
         logging.info('Creating "{name}" user.'.format(name=user['summary']['user']['username']))
@@ -129,16 +137,3 @@ for user in src_users:
     except ValueError:
         logging.info('Error creating "{name}" dataset.'.format(name=dataset['dataSet']['name']))
 """
-
-#TODO: GET groups on source
-#TODO: POST groups on destination
-#TODO: GET datasets on source
-#TODO: POST datasets on destination
-#TODO: GET users on source
-#TODO: POST users on destination
-
-#TODO: GET system content on source
-#TODO: POST system contnet on destination
-
-# TODO: GET user content on source
-#TODO: POST user content on destination
