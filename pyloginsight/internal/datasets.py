@@ -49,9 +49,26 @@ def create(conn, name, description, constraints):
     """
 
     """
-    constraints = [{'name': field, 'operator': 'CONTAINS', 'value': value, 'fieldType': 'STRING'}]
-    data = json.dumps({'name': name, 'description': description, 'constraints': constraints})
+    Based on research on source code, the structure, the expected input is as follows:
+    { 
+        'name': 'MyDataSet',
+        'type': 'OR',
+        'constraints': [
+            {
+                'internalName': 'MyField',
+                'operator': 'OR', 
+                'value': 'MyValue',
+                'fieldType': 'STRING',
+                'hidden': False
+            }
+        ]    
+    }
     
+    I tried the following and it fails:
+            
+    dst_conn.post(url='/datasets', json={'name': 'Apache', 'type': 'OR', 'constraints': [ {'internalName': 'tenant', 'operator': 'CONTAINS', 'value': 'apache', 'fieldType': 'STRING', 'hidden': False}] })
+
+
     return conn.post(url='/datasets', json={'name': name, 'description': description, 'constraints': json.dumps(constraints)})['dataSet']['id']
     """
     raise NotImplemented

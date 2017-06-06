@@ -89,7 +89,6 @@ for group in src_groups:
         logging.info('Error creating "{name}" group.'.format(name=group['summary']['group']['name']))
 """
 
-
 logging.info('Skipped: Creating datasets on destination.')
 """
 src_to_dst_dataset_mapping = {}
@@ -133,7 +132,7 @@ for user in src_users:
             email=user['summary']['user']['email'],
             groups=user['groups']
             )
-            
+
     except ValueError:
         logging.info('Error creating "{name}" dataset.'.format(name=dataset['dataSet']['name']))
 """

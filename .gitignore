@@ -10,3 +10,4 @@ CREDENTIALS.py
 export/
 dist/
 .coverage
+.vscode

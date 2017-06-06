@@ -54,10 +54,19 @@ def create(conn, name, capabilities):
     """
 
     """
+    Read the source code, and I believe the following is expected:
+    
+       ValidationErrors vErrors = new ValidationErrors().isListOf("dataSets", UUID.class, false, false)
+                    .isListOf("capabilities", String.class, requireCapabilities, requireCapabilities)
+                    .requiredOf("name", String.class, requireName)
+                    .validate(this);
+                    
     {
-        "name": "users",
-        "capabilities": ["ANALYTICS", "DASHBOARD"]
+        "dataSets": [UUID1, UUID2],
+        "capabilities": ["ANALYTICS"],
+        "name": "users"
     }
+    
     
     return conn.post(url='/groups', json={'name': name, 'capabilities': capabilities})['group']['id']
     """
