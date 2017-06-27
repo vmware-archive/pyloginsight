@@ -77,7 +77,6 @@ def create(conn, name, password, email, groups, generate_api_key=False):
     :return: The id of the user as a string.
     """
 
-    """
     return conn.post(url='/users', json={
         'username': name,
         'password': password,
@@ -85,5 +84,3 @@ def create(conn, name, password, email, groups, generate_api_key=False):
         'groupIds': groups,
         'generateApiKey': generate_api_key
     })['user']['id']
-    """
-    raise NotImplemented

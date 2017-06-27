@@ -119,20 +119,26 @@ for dataset in src_datasets:
 
 """
 
-logging.info('Skipped: Creating users on destination.')
-"""
+user_hashmap = {x['summary']['user']['id']: None for x in src_users}
+
+
 for user in src_users:
     try:
         logging.info('Creating "{name}" user.'.format(name=user['summary']['user']['username']))
 
+        groups = ['00000000-0000-0000-0000-000000000002']
+
+        if '00000000-0000-0000-0000-000000000001' in user['groups']:
+             groups.append('00000000-0000-0000-0000-000000000001')
+
         results = users.create(
             conn=dst_conn,
             name=user['summary']['user']['username'],
-            password='',
+            password='password123!',
             email=user['summary']['user']['email'],
-            groups=user['groups']
+            groups=groups
             )
 
     except ValueError:
-        logging.info('Error creating "{name}" dataset.'.format(name=dataset['dataSet']['name']))
-"""
+        logging.info('Error creating "{name}" user.'.format(name=user['summary']['user']['username']))
+
