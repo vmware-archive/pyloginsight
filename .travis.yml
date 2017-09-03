@@ -1,45 +1,46 @@
 sudo: false
 language: python
 python:
-  - "2.7"
-  - "3.3"
-  - "3.4"
-  - "3.5"
-  - "3.6-dev"
-  - "nightly"
-  - "pypy"
+- '2.7'
+- '3.3'
+- '3.4'
+- '3.5'
+- 3.6-dev
+- nightly
+- pypy
 matrix:
   fast_finish: true
   allow_failures:
-    - python: 3.3
-    - python: 3.6-dev
-    - python: nightly
-    - python: pypy
-# command to install dependencies
+  - python: 3.3
+  - python: 3.6-dev
+  - python: nightly
+  - python: pypy
 install:
-  - pip install pep8==1.7.0
-  - pip install pyflakes==1.3.0
-  - pip install pytest==3.0.3
-  - pip install pytest-flakes==1.0.1
-  - pip install pytest-pep8==1.0.6
-  - pip install requests_mock==1.1.0
-  - pip install pytest-cov==2.4.0
-  - pip install coveralls==1.1
-  - python setup.py --version
-  - python setup.py develop
-# command to run tests
+- pip install pep8==1.7.0
+- pip install pyflakes==1.3.0
+- pip install pytest==3.0.3
+- pip install pytest-flakes==1.0.1
+- pip install pytest-pep8==1.0.6
+- pip install requests_mock==1.1.0
+- pip install pytest-cov==2.4.0
+- pip install coveralls==1.1
+- python setup.py --version
+- python setup.py develop
 script:
-  - py.test --flakes --cov=pyloginsight --cov-config=tox.ini --cov-fail-under=60 --cov-report term-missing
+- py.test --flakes --cov=pyloginsight --cov-config=tox.ini --cov-fail-under=60 --cov-report term-missing
 after_success: coveralls
 before_deploy:
-  - git describe
-  - echo TRAVIS_TAG $TRAVIS_TAG
-  - echo version=\"$TRAVIS_TAG\" > $TRAVIS_BUILD_DIR/loginsightexport/__version__.py
+- git describe
+- echo TRAVIS_TAG $TRAVIS_TAG
+- echo version=\"$TRAVIS_TAG\" > $TRAVIS_BUILD_DIR/loginsightexport/__version__.py
 deploy:
   provider: pypi
   user: alanjcastonguay
   password:
-    secure: "H1pABdQtixeteUJK2o9dn94ZpfA6Tqu2e/N8yHY/YO2Mhu/D4gveR1hyPVVywoXeVsd2tQ02eAwUs/15aroydS5TtGmTwNnEmlHa9C1oFV6JEzZyexu2m3a1o5WXbQu7pgM01klnC7/7dUufFM8OiOZyOoiulU6IJIrqqdpTzISCdkjOBQ7rqZg01IrtQ0bUm05shcm2KW5aOqaZEoRKVcVcNF+jNOmN0pp0N9z8JS8Bv8t1u8jW8Cw8G+QmhF8qaV7G+kh/GVakeXJkz7wAVNIlrKrQVtPJwF1YpmKK7bJga/rDVvB67wkEF42amjMzlBj7R6ymA4YtT+DNe1ATHDt80Uxi7+t5/I6i67k+W1c6aaBdOZjduyD+nRXj76xy24wHYzt1ND5i3m8aFKkTJTrdb8rI06WpkuTENYMbVYMIXu2QKZogQ7ExyRy194kKI8GQp4cdTKUhqYVXFFK6uR4WyrAl3UKIAXfaFatG23LLjEP3rz53bCX3aKS/akKpXPbaTKXE5mw7lAtfIeFe0kggosy8OTp6qix68qlcdL/tid0Sbv/Am+FQyH7teI1yN+A3k6SitNQll7Cywkq+SIyPN8Y0Mptf6h/mUloFMqyvJv37Bn5B8doPi/Y71dwiMA8llKo80x+jHTvo6LHu+gABlVdHDYEonBHS1Qac5RE="
+    secure: H1pABdQtixeteUJK2o9dn94ZpfA6Tqu2e/N8yHY/YO2Mhu/D4gveR1hyPVVywoXeVsd2tQ02eAwUs/15aroydS5TtGmTwNnEmlHa9C1oFV6JEzZyexu2m3a1o5WXbQu7pgM01klnC7/7dUufFM8OiOZyOoiulU6IJIrqqdpTzISCdkjOBQ7rqZg01IrtQ0bUm05shcm2KW5aOqaZEoRKVcVcNF+jNOmN0pp0N9z8JS8Bv8t1u8jW8Cw8G+QmhF8qaV7G+kh/GVakeXJkz7wAVNIlrKrQVtPJwF1YpmKK7bJga/rDVvB67wkEF42amjMzlBj7R6ymA4YtT+DNe1ATHDt80Uxi7+t5/I6i67k+W1c6aaBdOZjduyD+nRXj76xy24wHYzt1ND5i3m8aFKkTJTrdb8rI06WpkuTENYMbVYMIXu2QKZogQ7ExyRy194kKI8GQp4cdTKUhqYVXFFK6uR4WyrAl3UKIAXfaFatG23LLjEP3rz53bCX3aKS/akKpXPbaTKXE5mw7lAtfIeFe0kggosy8OTp6qix68qlcdL/tid0Sbv/Am+FQyH7teI1yN+A3k6SitNQll7Cywkq+SIyPN8Y0Mptf6h/mUloFMqyvJv37Bn5B8doPi/Y71dwiMA8llKo80x+jHTvo6LHu+gABlVdHDYEonBHS1Qac5RE=
   on:
     tags: true
     branch: master
+env:
+  global:
+    secure: S13i53jGN3JeeZLESmQuGKyCHsUl/b6ICirftmfqRpj2vNz77ssH9UrHYaZhDCZTln400guQK+U3TMk3EPMp2dL7waxVxzharUqfE7CmTGCqBFi4l0ijXfKLy0DdiUv2x/tYZTXADLXe+90yz1gOsGASB+M9os1F3dkDHnqsQ5LaqlRlHMEFfJhmsA9aaMCiPF1S6e8/eRgiOlpRGliGEytC1ZeB8unvnz5vU2PYXoWGTjCgSJU43/PrTwdsUfDbCpyi3Mh7UeqbPTH40H870UfmHeb7fevD7yMJe8Wk6xK+2DTUAYnf5j9Xd1gjqaWPpG3TODyMziOs4cPR1d2khAMZKBHec3MfwMkO2CNXuz94lEMNpPHis0AO2DQokLtnrlSylT2l/LUP507rGoJ8Ae7wdeLVT6gHYyDSzLjjgcuJaGYEo8C+FazimiXp56RSOczTFRHmLhUzem5QjVsX0OkekPYim4rnqlxJg4bSZ3NoaFBXaDrtP9LHEdP03zBZ+2hBbzAfnY3hMrk3bn6EB1wjK9eyH2eFXUObsQzuEUaG2kxSBiTFaSUPnfHKcDgB3ixI56/s6zJkOJ5yyDpB5KKGXXbRAH3kA1e1Tj0iYdGG7QckguG6hp3kzYrsPYGOMIYSPcMtFw/IDw1j9oI3H2+pIhs8pHSeMxED4uLVocQ=
