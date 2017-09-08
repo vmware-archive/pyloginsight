@@ -78,8 +78,8 @@ class Credentials(requests.auth.AuthBase):
             return authresponse.json()['sessionId']
         except:
             if authresponse.status_code == 503 and 'should be bootstrapped' in authresponse.json().get('errorMessage', ''):
-                raise NotBootstrapped(authresponse.json().get('errorMessage'))
-            raise Unauthorized("Authentication failed", authresponse.text)
+                raise NotBootstrapped(authresponse.json().get('errorMessage'), authresponse)
+            raise Unauthorized("Authentication failed", authresponse)
 
     def handle_401(self, r, **kwargs):
         # method signature matches requests.Request.register_hook
