@@ -32,7 +32,7 @@ def default_user_agent():
     return "pyloginsight/{0}".format(version)
 
 
-from .exceptions import ResourceNotFound, TransportError, Unauthorized
+from .exceptions import ResourceNotFound, TransportError, Unauthorized, NotBootstrapped
 
 
 class Credentials(requests.auth.AuthBase):
@@ -71,12 +71,15 @@ class Credentials(requests.auth.AuthBase):
                                      None,
                                      None]), params=None)
 
+        logger.debug("Authenticating via url: {0}".format(prep.url))
         prep.prepare_body(data=None, files=None, json=authdict)
         authresponse = previousresponse.connection.send(prep, **kwargs)  # kwargs contains ssl _verify
         try:
             return authresponse.json()['sessionId']
         except:
-            raise Unauthorized("Authentication failed", authresponse)
+            if authresponse.status_code == 503 and 'should be bootstrapped' in authresponse.json().get('errorMessage', ''):
+                raise NotBootstrapped(authresponse.json().get('errorMessage'))
+            raise Unauthorized("Authentication failed", authresponse.text)
 
     def handle_401(self, r, **kwargs):
         # method signature matches requests.Request.register_hook
@@ -245,3 +248,38 @@ class Connection(object):
     @property
     def server(self):
         return Server(self)
+
+
+    def bootstrap(self, email=''):
+        """
+        :param email: optional email for the administrator's account
+        :return:
+        """
+
+        if self._authprovider.password is None:
+            import uuid
+            self._authprovider.password = str(uuid.uuid4())
+
+        deployment_payload = {
+            'user': {
+                'userName': self._authprovider.username,
+                'password': self._authprovider.password,
+                'email': email
+            }
+        }
+
+        # Directly call without sending an authorization header
+        response = self._call(
+            method="POST",
+            url="/deployment/new",
+            json=deployment_payload,
+            sendauthorization=False)
+
+        print("response", response)
+        print("Bootstrap has started, but it might take a while for server to come up")
+
+        poll = self._call(
+            method="POST",
+            url="/deployment/waitUntilStarted"
+        )
+        print("Poll complete:", poll)
