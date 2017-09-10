@@ -23,10 +23,9 @@ import collections
 from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
 from .abstracts import Entity, ServerProperty, RemoteObjectProxy, BaseSchema
 import json
-import attr
 import attrdict
 from marshmallow import Schema, fields
-
+from .exceptions import TransportError
 
 logger = logging.getLogger(__name__)
 
@@ -402,12 +401,20 @@ class Server(object):
     @property
     def is_bootstrapped(self):
         """Convenience function for interogating a server to determine whether it's been bootstrapped already."""
-        raise NotImplementedError("TODO: Determine whether the server is already bootstrapped")
+
+        # Attempt to bootstrap without providing any of the required fields, and inspect the exception
         try:
-            self.post("/deployment/new")
-            return False
-        except:
-            return True
+            response = self._connection.post("/deployment/new", json={})
+            raise TransportError("POST {} to /deployment/new should have raised an exception, but didn't", response)
+        except ValueError as e:
+            if e.args[0] == 400:
+                # The server is willing to accept correct field values to bootstrap with, so isn't bootstrapped yet.
+                return False
+            if e.args[0] == 403:
+                # The server is no longer willing to accept POSTs to /deployment/new, because it's already bootstrapped.
+                return True
+            raise
+        raise TransportError(response)
 
     @property
     def current_session(self):

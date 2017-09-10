@@ -24,3 +24,7 @@ class Cancel(RuntimeError):
 
 class ServerWarning(UserWarning):
     """The remote Log Insight server emitted a warning for an API resource."""
+
+
+class NotBootstrapped(ServerError):
+    """The server has not yet been bootstrapped."""
