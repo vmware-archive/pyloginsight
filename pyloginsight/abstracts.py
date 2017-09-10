@@ -7,6 +7,9 @@ import abc
 import attr
 import json
 import python_jsonschema_objects
+import warnings
+from marshmallow import Schema, fields, pre_load, post_load, post_dump
+
 
 logger = logging.getLogger(__name__)
 ABC = abc.ABCMeta('ABC', (object,), {})
@@ -25,9 +28,11 @@ class ServerDictMixin(collections.MutableMapping):
     A server-backed dictionary of items.
     Deleting or updating an item usually means DELETE/PUTing a single item's resource.
     Produces items as dynamic subclass of collections.namedtuple.
-    Frequently used along with `AppendableDictMixin`.
+    Frequently used along with `AppendableServerDictMixin`.
     Mutually-incompatible with the `ServerListMixin`.
     """
+    _connection = None
+
     def __delitem__(self, item):
         try:
             self._connection.delete("{0}/{1}".format(self._baseurl, item))
@@ -37,13 +42,40 @@ class ServerDictMixin(collections.MutableMapping):
 
     def __getitem__(self, item):
         """
-        Retrieve details for a single item from the summary of all items. Could raise KeyError.
-        If `_fromserver()` is defined, call it to instantiate an object. Otherwise, produce a collections.namedtuple"""
-        x = self._iterable[item]
-        if hasattr(self, "_fromserver"):
-            return self._fromserver(**x)
+        Retrieve details for a single item from the server. Could raise KeyError.
+        """
+        print("Attempting to retrieve item:{}".format(item))
+
+        url = "{0}/{1}".format(self._baseurl, item)
+
+        if hasattr(self, "_fetchone"):
+            return self._single.from_server(self._connection, url)
+
+        return self._single.from_dict(self._connection, url, self._iterable[item])
+
+    def items(self):
+        """
+        Retrieve full objects directly from the summary view. May be stale, but faster to iterate.
+        This is an alternate to using d[k], which invokes __getitem__ to make an HTTP request.
+        """
+        d = self._iterable
+        try:
+            rewrap = self._single.__schema__.__envelope__['single']
+        except AttributeError:
+            rewrap = None
+
+        if type(d) is dict:
+            for k, v in d.items():
+                item = v['id']
+                url = "{0}/{1}".format(self._baseurl, item)
+                yield (k, self._single.from_dict(self._connection, url, {rewrap: v} if rewrap else v))
+
         else:
-            return collections.namedtuple(self.__class__.__name__, x.keys())(**x)
+            #raise NotImplementedError("This hasn't been verified yet.")
+            for v in d:
+                item = v['id']
+                url = "{0}/{1}".format(self._baseurl, item)
+                yield (item, self._single.from_dict(self._connection, url, {rewrap: v} if rewrap else v))
 
     def keys(self):
         return self._iterable.keys()
@@ -62,8 +94,12 @@ class ServerDictMixin(collections.MutableMapping):
     def _iterable(self):
         """
         How to navigate from the top-level container summary to a list/dict of child items.
-        Default implementation returns the top-level dict; override in child class.
+        Default implementation returns the top-level dict or dict[_basekey; override in child class.
         """
+
+        if hasattr(self, "_basekey"):
+            return self.asdict().get(getattr(self, '_basekey'))
+
         return self.asdict()
 
 
@@ -118,27 +154,22 @@ class AppendableServerDictMixin(object):
         :param value: any python object which will be passed to and marshaled by :func:self._createspec:
         :return uuid: url-fragment identifier for the newly-created server-side object
         """
-        resp = self._connection.post(self._baseurl, json=self._createspec(value)._asdict())
-        try:
-            return resp['id']  # new UUID for this object, probably accessible at _baseurl/{id}
-        except KeyError:
-            return True
+        resp = self._connection.post(self._baseurl, json=self._createspec(value))
 
-    @abc.abstractmethod
+        # new UUID for this object, probably accessible at _baseurl/{id}
+        o = self._single.from_dict(self._connection, url=None, data=resp)
+
+        print("Created new object {}/{}".format(self._baseurl, o))
+        url = "{}/{}".format(self._baseurl, o['id'])
+
+        # TypeError: 'X' does not allow attribute creation.
+
+        object.__setattr__(o, "__url", url)
+        return o['id']
+
+
     def _createspec(self, value):
-        """
-        Structure to marshal a new entity being created on the server. Must contain a json-serializable `_asdict()` method.
-        These examples are equivalent:
-
-            _createspec = collections.namedtuple("License", ("key",))
-
-            class _createspec(object):
-                def __init__(self, key):
-                    self.key = key
-                def _asdict(self):
-                    return {"key": self.key}
-        """
-        pass
+        return value._serialize()
 
 
 class ServerAddressableObject(ABC):
@@ -151,18 +182,8 @@ class ServerAddressableObject(ABC):
         if ServerDictMixin in self.__class__.__mro__ and ServerListMixin in self.__class__.__mro__:
             raise TypeError("ServerDictMixin and ServerListMixin are mutually-exclusive concepts. They both try to define __iter__")
 
-    """
-    def __get__(self, obj, objtype):
-        if callable(self):
-            self.__init__(obj)
-            return self()
-        else:
-            raise AttributeError("Cannot retrieve {0} from {1}".format(self.__class__.__name__, objtype.__name__))
+        print("init", self, "with _basekey", self._basekey)
 
-    def __set__(self, obj, value):
-        raise AttributeError()
-
-    """
 
     @property
     @abc.abstractmethod
@@ -208,9 +229,15 @@ class RemoteObjectProxy(object):
     __connection = None
     __url = None
 
+
+    def publish_new_instance_to_server(self, connection, baseurl):
+        return connection.post(baseurl, json=self._serialize())
+
     @classmethod
-    def from_server(cls, connection, url):
-        body = connection.get(url)
+    def from_dict(cls, connection, url, data):
+        body, errors = cls.MarshmallowSchema().load(data)
+        for e in errors:
+            logger.warning(e)
         self = cls(**body)
 
         # Can't access directly, as validator borrows the setattr/getattribute interface.
@@ -218,15 +245,34 @@ class RemoteObjectProxy(object):
         object.__setattr__(self, "__url", url)
         return self
 
+    @classmethod
+    def from_server(cls, connection, url):
+        body = connection.get(url)
+        if hasattr(cls, '_singlekey'):
+            body = body[cls._singlekey]
+        print("from_server url {} retrieved {}".format(url, body))
+
+        self = cls.from_dict(connection, url, body)
+        return self
+
     def _serialize(self):
-        if hasattr(self, "validate"):
-            self.validate()
-        if hasattr(self, "for_json"):
-            return self.for_json()
-        return attr.asdict(self)
+        """
+        The instance validates & serializes itself, returning a dict suitible for json.dumps().
+        Called from to_server, and from collections to create new server-side entities.
+        May or may not already have an `id` or __url.
+        """
+        data, errors = self.MarshmallowSchema().dump(self)
+        for e in errors:
+            logger.warning(e)
+
+        return data
 
     def to_server(self, connection, url=None):
-
+        """
+        The instance validates & serializes itself, then writes back to the server at an existing URL with PUT.
+        Alternatively, replace the existing instance in the collection with this instance, `d[k]=instance`.
+        To create a new server-side entity, add this instance to a collection, `d.append(instance)`.
+        """
         if url is None:
             url = str(object.__getattribute__(self, "__url"))
             if url is None:
@@ -254,10 +300,20 @@ class RemoteObjectProxy(object):
             connection = object.__getattribute__(self, "__connection")
             self.to_server(connection, self.__url)
 
+    def __repr__(self):
+        return "%s(%s)" % (
+            self.__class__.__name__,
+            ", ".join(["{}={!r}".format(k, self[k]) for k in self])
+        )
+
+    @property
+    def _iterable(self):
+        """Default behavior is to iterate over a named child element."""
+        return self.get(self._basekey)
 
 class ServerProperty(object):
     """
-    Descriptor for a server's object property. Writes updates to the server on property change.
+    Descriptor for a server's object property. Makes outbound HTTP requests on access.
     """
 
     def __init__(self, clazz, readonly=False):
@@ -296,7 +352,7 @@ class ServerProperty(object):
         print("Trying to write server property", attribute_name, "from", instance)
         self.value = value
 
-        #raise AttributeError()
+        raise NotImplementedError
 
 
 @attr.s
@@ -323,3 +379,30 @@ class Entity(object):
 
     def __get__(self, instance, objtype):
         print("__get__(", instance, objtype)
+
+class BaseSchema(Schema):
+    # Custom options
+    __envelope__ = {
+        'single': None,
+        'many': None
+    }
+
+    def get_envelope_key(self, many):
+        """Helper to get the envelope key."""
+        key = self.__envelope__['many'] if many else self.__envelope__['single']
+        assert key is not None, "Envelope key undefined"
+        return key
+
+    @pre_load(pass_many=True)
+    def unwrap_envelope(self, data, many):
+        key = self.get_envelope_key(many)
+        return data[key]
+
+    @post_dump(pass_many=True)
+    def wrap_with_envelope(self, data, many):
+        key = self.get_envelope_key(many)
+        return {key: data}
+
+    #@post_load
+    #def make_object(self, data):
+    #    return self.__model__(**data)

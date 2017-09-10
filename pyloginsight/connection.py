@@ -22,6 +22,7 @@ from . import __version__ as version
 import requests
 import logging
 import warnings
+from .exceptions import ResourceNotFound, TransportError, Unauthorized, ServerWarning
 from .models import Server
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,6 @@ def default_user_agent():
     return "pyloginsight/{0}".format(version)
 
 
-from .exceptions import ResourceNotFound, TransportError, Unauthorized
 
 
 class Credentials(requests.auth.AuthBase):
@@ -159,7 +159,12 @@ class Connection(object):
                                          params=params)
 
         if 'Warning' in r.headers:
-            warnings.warn(r.headers.get('Warning'))
+            if 'VMware-LI-API-Status' in r.headers:
+                warnings.warn("Log Insight API resource {} {} is {}".format(method, url, r.headers['VMware-LI-API-Status']),
+                              ServerWarning,
+                              stacklevel=5)
+            else:
+                warnings.warn(r.headers.get('Warning'))
 
         try:
             payload = r.json()
@@ -185,8 +190,13 @@ class Connection(object):
             return payload
 
         # Failure. We're going to throw an exception. Try to harvest an errorMessage from the response.
+
         try:
             error_message = payload['errorMessage']
+        except (TypeError, KeyError):
+            error_message = None
+        try:
+            error_message = payload['errorDetails']
         except (TypeError, KeyError):
             error_message = None
 

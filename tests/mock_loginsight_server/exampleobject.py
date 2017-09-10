@@ -7,12 +7,11 @@ from .utils import RandomDict
 
 mockserverlogger = logging.getLogger("LogInsightMockAdapter")
 
-example_url_matcher = re.compile('/api/v1/example/([a-f0-9-]+)$')
-
+example_url_matcher = re.compile('/api/v1/example/([a-z0-9-]+)$')
 
 
 def has_guid(fn):
-    """Server mock; fail any request which does not contain the expected Authorization header with HTTP/401"""
+    """Server mock; fail any request which doesn't match the example object url format"""
     @wraps(fn)
     def wrapper(self, request, context):
         try:
@@ -29,7 +28,13 @@ class MockedExampleObjectMixin(requests_mock.Adapter):
     def __init__(self, **kwargs):
         super(MockedExampleObjectMixin, self).__init__(**kwargs)
 
-        self.known_examples = RandomDict({'12345678-90ab-cdef-1234-567890abcdef': {'attribute': 'value'}})
+        self.known_examples = RandomDict(
+            {
+                '12345678-90ab-cdef-1234-567890abcdef': {'attribute': 'value'},
+                'uuid-of-object-with-extra-attribute': {'attribute': 'value', 'extraattribute': 'included'},
+                'object-with-a-datetime': {'datetime': '2000-01-01T04:05:06Z', 'timedelta': 360000000}  # 6 minutes
+            }
+        )
 
         # Collection
         self.register_uri('GET', '/api/v1/example', status_code=200, text=self.callback_list_example)

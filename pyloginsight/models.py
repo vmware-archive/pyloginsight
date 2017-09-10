@@ -21,24 +21,14 @@ from distutils.version import StrictVersion
 import logging
 import collections
 from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
-from .abstracts import Entity, ServerProperty
+from .abstracts import Entity, ServerProperty, RemoteObjectProxy, BaseSchema
 import json
+import attr
+import attrdict
+from marshmallow import Schema, fields
 
 
 logger = logging.getLogger(__name__)
-
-
-def named_tuple_with_defaults(name, fields, values=()):
-    new_class = collections.namedtuple(name, fields)
-    new_class.__new__.__defaults__ = (None,) * len(new_class._fields)
-
-    if isinstance(values, collections.Mapping):
-        prototype = new_class(**values)
-    else:
-        prototype = new_class(*values)
-
-    new_class.__new__.__defaults__ = tuple(prototype)
-    return new_class
 
 
 class LicenseKeys(collections.MutableMapping):
@@ -88,20 +78,33 @@ class LicenseKeys(collections.MutableMapping):
         return self._rootobject
 
 
-class AlternateLicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
+class LicenseKey(RemoteObjectProxy, attrdict.AttrDict):
+    class MarshmallowSchema(Schema):
+        id = fields.Str()
+        error = fields.Str(load_only=True)
+        status = fields.Str(load_only=True)
+        configuration = fields.Str(load_only=True)
+        expiration = fields.Str(load_only=True)
+        licenseKey = fields.Str()
+        infinite = fields.Str(load_only=True)
+        count = fields.Integer(load_only=True)
+        typeEnum = fields.Str(load_only=True)
+
+
+class LicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/licenses"
-    _fromserver = collections.namedtuple("License", ("id", "error", "status", "configuration", "expiration", "licenseKey", "infinite", "count", "typeEnum"))
+    _single = LicenseKey
+    _basekey = "licenses"
 
-    class _createspec(object):
-        def __init__(self, key):
-            self.key = key
+    def _createspec(self, value):
+        # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
+        if isinstance(value, LicenseKey):
+            value = value['licenseKey']
+        return {'key': value}
 
-        def _asdict(self):
-            return {"key": self.key}
-
-    @property
-    def _iterable(self):
-        return self.asdict().get("licenses")
+    #@property
+    #def _iterable(self):
+    #    return self.asdict().get("licenses")
 
 
 class LegacyVersion(ServerAddressableObject, StrictVersion):
@@ -139,7 +142,11 @@ class LegacyVersion(ServerAddressableObject, StrictVersion):
 
 class Version(StrictVersion, Entity):
     """
-    Version of the server.
+    Server's self-reported current version number.
+
+    Extract a Major.Minor.Patch version number from the server's response,
+    and update internal state.
+
     """
     release_name = None
     prerelease = None
@@ -342,6 +349,47 @@ class Roles(collections.MutableMapping):
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
 
 
+
+
+class User(RemoteObjectProxy, attrdict.AttrDict):
+    #_singlekey = "user"
+
+    class MarshmallowSchema(BaseSchema):
+        __envelope__ = {
+            'single': 'user',
+            'many': 'users',
+        }
+        #__model__ = User
+
+        id = fields.Str()
+        username = fields.Str()
+        password = fields.Str(dump_only=True)
+        email = fields.Email(missing="", required=True)
+        type = fields.Str()
+        apiId = fields.Str()
+        groupIds = fields.List(fields.String())
+        capabilities = fields.List(fields.String())
+        userCapabilities = fields.List(fields.String())
+        userDataSets= fields.List(fields.String())
+        typeEnum = fields.Str()
+    __schema__ = MarshmallowSchema
+
+
+class Users(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
+    _baseurl = "/users"
+    _basekey = "users"
+    _single = User
+    _fetchone = True
+
+    def keys(self):
+        print(self._iterable)
+        return [x['id'] for x in self._iterable]
+
+    def _createspec(self, instance):
+        # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
+        return instance
+
+
 class Server(object):
     """High-level object representing the capabilities of a remote Log Insight server"""
     _connection = None
@@ -349,13 +397,7 @@ class Server(object):
     def __init__(self, connection):
         self._connection = connection
 
-
-    @property
-    def version(self):
-        return Version.from_server(self._connection)
-
-    version2 = ServerProperty(Version)
-
+    version = ServerProperty(Version)
 
     @property
     def is_bootstrapped(self):
@@ -385,4 +427,3 @@ class Server(object):
         return Datasets(self._connection)
 
     # TODO: Model the server features as properties
-

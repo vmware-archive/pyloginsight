@@ -27,21 +27,10 @@ def test_version_not_iterable(connection):
             discard = _
 
 
-def test_server_dot_version_directly_produces_populated_StrictVersion(connection):
-    """Verify that a version number is accessible without correct/any authentication"""
+def test_server_dot_version_is_a_StrictVersion(connection):
+    """Verify that a version number is a normal StrictVersion object"""
     s = connection.server
     version = s.version
-    assert isinstance(version, Version)
-    assert isinstance(version, StrictVersion)
-    assert version > StrictVersion("0.0")
-    print(version)
-    assert hasattr(version, 'version')
-
-
-def test_server_dot_version2_directly_produces_populated_StrictVersion(connection):
-    """Verify that a version number is accessible without correct/any authentication"""
-    s = connection.server
-    version = s.version2
     assert isinstance(version, Version)
     assert isinstance(version, StrictVersion)
     assert version > StrictVersion("0.0")
