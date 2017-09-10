@@ -20,3 +20,6 @@ class Unauthorized(TransportError):
 
 class Cancel(RuntimeError):
     """Update to server intentionally cancelled from within a context manager."""
+
+class NotBootstrapped(ServerError):
+    """The server has not yet been bootstrapped."""
