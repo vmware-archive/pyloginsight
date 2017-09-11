@@ -42,7 +42,9 @@ before_script:
 script:
 - py.test --server "$IP" --license "$LICENSE" --flakes --cov=pyloginsight --cov-config=tox.ini
   --cov-fail-under=60 --cov-report term-missing
-after_success: coveralls
+after_success:
+- coveralls
+- vcd vapp delete "$MACHINE" --yes --force
 before_deploy:
 - git describe
 - echo TRAVIS_TAG $TRAVIS_TAG
