@@ -6,13 +6,14 @@ from .licenses import MockedLicensesMixin
 from .version import MockedVersionMixin
 from .exampleobject import MockedExampleObjectMixin
 from .auth_providers import MockedAuthProvidersMixin
+from .bootstrap import MockedBootstrapMixin
 
 from pyloginsight.connection import Connection, Credentials
 
 mockserverlogger = logging.getLogger("LogInsightMockAdapter")
 
 
-class LogInsightMockAdapter(MockedExampleObjectMixin, MockedVersionMixin, MockedLicensesMixin, MockedSessionsMixin, MockedAuthProvidersMixin, requests_mock.Adapter):
+class LogInsightMockAdapter(MockedExampleObjectMixin, MockedBootstrapMixin, MockedVersionMixin, MockedLicensesMixin, MockedSessionsMixin, MockedAuthProvidersMixin, requests_mock.Adapter):
     pass
 
 
