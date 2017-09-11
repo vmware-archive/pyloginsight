@@ -30,13 +30,15 @@ install:
 - python setup.py --version
 - python setup.py develop
 before_script:
+- pwd
+- ls -la
 - eval "MACHINE=travis-$TRAVIS_EVENT_TYPE-$TRAVIS_JOB_NUMBER-$TRAVIS_COMMIT"
 - echo MACHINE "$MACHINE"
 - vcd login $VCD_SERVER $VCD_ORG testrunner --vdc $VCD_VDC -V "27.0"
 - vcd vapp create $VCD_CATALOG li45template "$MACHINE"
-- python utils/cloud_server.py vm publiclyaccessible "$MACHINE"
-- python utils/cloud_server.py vm bootstrap_li "$MACHINE"
-- eval $(python utils/cloud_server.py vm externalip --env "$MACHINE")
+- python $TRAVIS_BUILD_DIR/utils/cloud_server.py vm publiclyaccessible "$MACHINE"
+- python $TRAVIS_BUILD_DIR/utils/cloud_server.py vm bootstrap_li "$MACHINE"
+- eval $(python $TRAVIS_BUILD_DIR/utils/cloud_server.py vm externalip --env "$MACHINE")
 script:
 - py.test --server "$IP" --license "$LICENSE" --flakes --cov=pyloginsight --cov-config=tox.ini
   --cov-fail-under=60 --cov-report term-missing
