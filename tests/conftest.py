@@ -34,7 +34,7 @@ ConnectionContainer = namedtuple("Connections", ["clazz", "hostname", "port", "a
 
 
 def pytest_addoption(parser):
-    parser.addoption("--server", action="append", metavar="SERVER:PORT", default=["mockserverlocal:9543"],
+    parser.addoption("--server", action="store", metavar="SERVER:PORT", default="mockserverlocal:9543",
         help="Also run tests against https://SERVER:PORT, can be listed multiple times. Mock server @ mockserverlocal:9543")
     parser.addoption("--username", action="store", default="admin",
         help="Used with --server")
@@ -56,27 +56,30 @@ def pytest_generate_tests(metafunc):
     if 'servers' in metafunc.fixturenames:
 
         configs = []
-        for s in metafunc.config.getoption('server'):
-            hostname, port = s.split(":", maxsplit=1)
 
-            # magic hostname
-            if hostname == "mockserverlocal":
-                clazz = MockedConnection
-            else:
-                clazz = Connection
+        s = metafunc.config.getoption('server')
+        print("Running tests against server {}".format(s))
 
-            configs.append(
-                ConnectionContainer(clazz,
-                                    hostname,
-                                    int(port),
-                                    Credentials(
-                                        metafunc.config.getoption("username"),
-                                        metafunc.config.getoption("password"),
-                                        metafunc.config.getoption("provider"),
-                                    ),
-                                    False
-                )
+        hostname, port = s.split(":")
+
+        # magic hostname
+        if hostname == "mockserverlocal":
+            clazz = MockedConnection
+        else:
+            clazz = Connection
+
+        configs.append(
+            ConnectionContainer(clazz,
+                                hostname,
+                                int(port),
+                                Credentials(
+                                    metafunc.config.getoption("username"),
+                                    metafunc.config.getoption("password"),
+                                    metafunc.config.getoption("provider"),
+                                ),
+                                False
             )
+        )
 
         metafunc.parametrize("servers",
                              argvalues=configs,
