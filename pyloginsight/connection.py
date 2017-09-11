@@ -288,8 +288,7 @@ class Connection(object):
             if e.args[0] == 403:
                 raise AlreadyBootstrapped(e)
 
-        print("response", response)
-        print("Bootstrap has started, but it might take a while for server to come up")
+        logging.info("Bootstrap has started, but it might take a while for server to start.")
         self.wait_until_started()
 
     def wait_until_started(self):
@@ -297,3 +296,4 @@ class Connection(object):
             method="POST",
             url="/deployment/waitUntilStarted"
         )
+        logging.info("Server is started.")

@@ -58,6 +58,7 @@ class ExampleObjectMarshmallow(RemoteObjectProxy, attrdict.AttrDict):
 # Can add ExampleObjectJson, ExampleObjectAttribs to the params list to exercise more tests.
 @pytest.fixture(params=[ExampleObjectMarshmallow])
 def ExampleObject(request):
+    """A DAO class under scrutiny."""
     return request.param
 
 

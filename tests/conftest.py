@@ -95,11 +95,13 @@ class SetHostHeaderAdapter(HTTPAdapter):
 
 @pytest.fixture
 def licensekey(pytestconfig):
+    """License key which should be applied to the remote server(s)."""
     return pytestconfig.getoption('license')
 
-# Fixtures using above servers and working credentials
+
 @pytest.fixture
 def connection(servers, licensekey):
+    """A pyloginsight.connection to a remote server."""
     c = servers
     connection_instance = c.clazz(c.hostname, auth=c.auth, port=c.port, verify=c.verify)
 
@@ -118,6 +120,7 @@ def connection(servers, licensekey):
         None
 ])
 def wrong_credential_connection(servers, request, licensekey):
+    """A pyloginsight.connection to a remote server, with non-functional credentials."""
     c = servers._replace(auth=request.param)
     connection_instance = c.clazz(c.hostname, auth=c.auth, port=c.port, verify=c.verify)
     # Lie about port number

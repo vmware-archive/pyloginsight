@@ -7,6 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.sideeffects
 def test_add_user_and_remove_it_again(connection):
     d = Users(connection)
     previous_quantity = len(d)
@@ -58,6 +59,7 @@ def test_iterate_over(connection):
     assert counter == len(d)  # counting and length agree
 
 
+@pytest.mark.sideeffects
 def test_cleanup_test_users(connection):
     d = Users(connection)
 

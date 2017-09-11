@@ -15,6 +15,7 @@ def first_active_license_key(licenses):
     return None
 
 
+@pytest.mark.sideeffects
 def test_remove_first_license_and_re_add_it_again(connection):
     licenseobject = LicenseKeys(connection)
     previous_quantity = len(licenseobject)
