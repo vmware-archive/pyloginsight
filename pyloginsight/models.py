@@ -21,131 +21,57 @@ from distutils.version import StrictVersion
 import logging
 import collections
 from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
-from .abstracts import Entity, ServerProperty
+from .abstracts import ServerProperty, RemoteObjectProxy, BaseSchema
 import json
+import attrdict
+from marshmallow import Schema, fields
 from .exceptions import TransportError
 
 logger = logging.getLogger(__name__)
 
 
-def named_tuple_with_defaults(name, fields, values=()):
-    new_class = collections.namedtuple(name, fields)
-    new_class.__new__.__defaults__ = (None,) * len(new_class._fields)
-
-    if isinstance(values, collections.Mapping):
-        prototype = new_class(**values)
-    else:
-        prototype = new_class(*values)
-
-    new_class.__new__.__defaults__ = tuple(prototype)
-    return new_class
-
-
-class LicenseKeys(collections.MutableMapping):
-    """A server-backed dictionary (hashmap) of items embedded in the
-    Adding, deleting or updating an item usually means POST/PUTing a single item's resource."""
-
-    def __init__(self, connection, baseurl):
-        self._connection = connection
-        self._baseurl = baseurl
-
-    def __delitem__(self, item):
-        self._connection.delete("{0}/{1}".format(self._baseurl, item))
-        return True
-
-    def append(self, licensekey):
-        """A list-like interface for addding a new licence.
-        The server will assign a new UUID when inserting into the mapping.
-        A subsequent request to keys/iter will contain the new license in the value."""
-        self._connection.post(self._baseurl, json={"key": licensekey})
-        # TODO: We should really use the response since it contains the UUID.
-        return True
-
-    def __getitem__(self, item):
-        """Retrieve details for a license key. Could raise KeyError."""
-        return self._rootobject['licenses'][item]
-
-    def keys(self):
-        return self._rootobject['licenses'].keys()
-
-    def __iter__(self):
-        for key in self.keys():
-            yield key
-
-    def __len__(self):
-        return len(self._rootobject["licenses"])
-
-    def __setitem__(self, key, value):
-        raise NotImplementedError
-
-    @property
-    def _rootobject(self):
-        return self._connection.get(self._baseurl)
-
-    @property
-    def summary(self):
-        """Dictionary summarizing installed licenses and active features"""
-        return self._rootobject
+class LicenseKey(RemoteObjectProxy, attrdict.AttrDict):
+    class MarshmallowSchema(Schema):
+        id = fields.Str()
+        error = fields.Str(load_only=True)
+        status = fields.Str(load_only=True)
+        configuration = fields.Str(load_only=True)
+        expiration = fields.Str(load_only=True)
+        licenseKey = fields.Str()
+        infinite = fields.Str(load_only=True)
+        count = fields.Integer(load_only=True)
+        typeEnum = fields.Str(load_only=True)
 
 
-class AlternateLicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
+class LicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/licenses"
-    _fromserver = collections.namedtuple("License", ("id", "error", "status", "configuration", "expiration", "licenseKey", "infinite", "count", "typeEnum"))
+    _single = LicenseKey
+    _basekey = "licenses"
 
-    class _createspec(object):
-        def __init__(self, key):
-            self.key = key
+    def _createspec(self, value):
+        # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
+        if isinstance(value, LicenseKey):
+            value = value['licenseKey']
+        return {'key': value}
 
-        def _asdict(self):
-            return {"key": self.key}
-
-    @property
-    def _iterable(self):
-        return self.asdict().get("licenses")
-
-
-class LegacyVersion(ServerAddressableObject, StrictVersion):
-    """Server's self-reported current version number."""
-    _baseurl = "/version"
-
-    def __call__(self):
-        """
-        Extract a Major.Minor.Patch version number from the server's response,
-        and update internal state.
-        :return: self, which acts like a distutils.StrictVersion
-        """
-        self.parse(self.asdict().get("version").split("-", 1)[0])
-        return self
-
-    @property
-    def build(self):
-        """
-        Extract build number from version string returned by server.
-        Every official build has a distinct, non-repeating build number.
-        Higher build numbers do not necessarily indicate a superset of functionality.
-        :return: int
-        """
-        return int(self.asdict().get("version").split("-", 1)[1])
-
-    @property
-    def raw(self):
-        """
-        Raw version string returned by server. Has the format `Major.Minor.Patch-build.flag.names`,
-        where flag names are strings like "TP" or "BETA".
-        :return: str
-        """
-        return self.asdict().get("version")
+    #@property
+    #def _iterable(self):
+    #    return self.asdict().get("licenses")
 
 
-class Version(StrictVersion, Entity):
+class Version(StrictVersion, RemoteObjectProxy):
     """
-    Version of the server.
+    Server's self-reported current version number.
+
+    Extract a Major.Minor.Patch version number from the server's response,
+    and update internal state.
+
     """
     release_name = None
     prerelease = None
     _url = "/version"
 
-    def __init__(self, url, version, releaseName, **kwargs):
+    def __init__(self, version, releaseName, **kwargs):
         self.release_name = releaseName
         self.vstring, self.build_string = version.split("-", 1)
         super(Version, self).__init__(self.vstring)
@@ -160,6 +86,11 @@ class Version(StrictVersion, Entity):
         """
         return int(self.build_string)
 
+    class MarshmallowSchema(Schema):
+        version = fields.Str()
+        releaseName = fields.Str()
+
+    __schema__ = MarshmallowSchema
 
 
 class Dataset(ServerAddressableObject):
@@ -342,6 +273,47 @@ class Roles(collections.MutableMapping):
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
 
 
+
+
+class User(RemoteObjectProxy, attrdict.AttrDict):
+    #_singlekey = "user"
+
+    class MarshmallowSchema(BaseSchema):
+        __envelope__ = {
+            'single': 'user',
+            'many': 'users',
+        }
+        #__model__ = User
+
+        id = fields.Str()
+        username = fields.Str()
+        password = fields.Str(dump_only=True)
+        email = fields.Email(missing="", required=True)
+        type = fields.Str()
+        apiId = fields.Str()
+        groupIds = fields.List(fields.String())
+        capabilities = fields.List(fields.String())
+        userCapabilities = fields.List(fields.String())
+        userDataSets= fields.List(fields.String())
+        typeEnum = fields.Str()
+    __schema__ = MarshmallowSchema
+
+
+class Users(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
+    _baseurl = "/users"
+    _basekey = "users"
+    _single = User
+    _fetchone = True
+
+    def keys(self):
+        print(self._iterable)
+        return [x['id'] for x in self._iterable]
+
+    def _createspec(self, instance):
+        # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
+        return instance
+
+
 class Server(object):
     """High-level object representing the capabilities of a remote Log Insight server"""
     _connection = None
@@ -349,13 +321,7 @@ class Server(object):
     def __init__(self, connection):
         self._connection = connection
 
-
-    @property
-    def version(self):
-        return Version.from_server(self._connection)
-
-    version2 = ServerProperty(Version)
-
+    version = ServerProperty(Version, "/version")
 
     @property
     def is_bootstrapped(self):
@@ -382,7 +348,7 @@ class Server(object):
 
     @property
     def license(self):
-        return LicenseKeys(self._connection, "/licenses")
+        return LicenseKeys(self._connection)
 
     @property
     def roles(self):
@@ -393,4 +359,3 @@ class Server(object):
         return Datasets(self._connection)
 
     # TODO: Model the server features as properties
-

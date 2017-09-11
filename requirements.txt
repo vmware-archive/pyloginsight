@@ -1,7 +1,5 @@
 certifi>=2015.11.20.1
 requests>=2.9.1
-python_jsonschema_objects>=0.0.22
-jsonmodels
 six
-jsonschema
-ramlfications
+marshmallow
+attrdict

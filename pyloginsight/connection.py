@@ -22,6 +22,8 @@ from . import __version__ as version
 import requests
 import logging
 import warnings
+from .exceptions import ResourceNotFound, TransportError, Unauthorized, ServerWarning, NotBootstrapped, AlreadyBootstrapped
+
 from .models import Server
 
 logger = logging.getLogger(__name__)
@@ -30,9 +32,6 @@ APIV1 = '/api/v1'
 
 def default_user_agent():
     return "pyloginsight/{0}".format(version)
-
-
-from .exceptions import ResourceNotFound, TransportError, Unauthorized, NotBootstrapped
 
 
 class Credentials(requests.auth.AuthBase):
@@ -162,7 +161,12 @@ class Connection(object):
                                          params=params)
 
         if 'Warning' in r.headers:
-            warnings.warn(r.headers.get('Warning'))
+            if 'VMware-LI-API-Status' in r.headers:
+                warnings.warn("Log Insight API resource {} {} is {}".format(method, url, r.headers['VMware-LI-API-Status']),
+                              ServerWarning,
+                              stacklevel=5)
+            else:
+                warnings.warn(r.headers.get('Warning'))
 
         try:
             payload = r.json()
@@ -188,8 +192,13 @@ class Connection(object):
             return payload
 
         # Failure. We're going to throw an exception. Try to harvest an errorMessage from the response.
+
         try:
             error_message = payload['errorMessage']
+        except (TypeError, KeyError):
+            error_message = None
+        try:
+            error_message = payload['errorDetails']
         except (TypeError, KeyError):
             error_message = None
 
@@ -269,17 +278,22 @@ class Connection(object):
         }
 
         # Directly call without sending an authorization header
-        response = self._call(
-            method="POST",
-            url="/deployment/new",
-            json=deployment_payload,
-            sendauthorization=False)
+        try:
+            self._call(
+                method="POST",
+                url="/deployment/new",
+                json=deployment_payload,
+                sendauthorization=False)
+        except TransportError as e:
+            if e.args[0] == 403:
+                raise AlreadyBootstrapped(e)
 
-        print("response", response)
-        print("Bootstrap has started, but it might take a while for server to come up")
+        logging.info("Bootstrap has started, but it might take a while for server to start.")
+        self.wait_until_started()
 
-        poll = self._call(
+    def wait_until_started(self):
+        self._call(
             method="POST",
             url="/deployment/waitUntilStarted"
         )
-        print("Poll complete:", poll)
+        logging.info("Server is started.")

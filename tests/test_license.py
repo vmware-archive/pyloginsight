@@ -1,69 +1,74 @@
 import pytest
-from functools import wraps
-from pyloginsight.connection import Credentials
-from pyloginsight.models import Server, LicenseKeys
-import requests_mock
+from pyloginsight.models import LicenseKeys
+import logging
 
 
-SUCCESSFUL_LOGIN_JSON = '{"userId":"012345678-9ab-cdef-0123-456789abcdef","sessionId":"hNhXgA","ttl":1800}'
-LICENSE_LIST_JSON = '{"hasOsi": true, "limitedLicenseCapabilities": ["QUERY", "RBAC", "UPGRADE", "ACTIVE_DIRECTORY", "CONTENT_PACK"], "standardLicenseCapabilities": ["FORWARDING", "RBAC", "UPGRADE", "CUSTOM_SSL", "ACTIVE_DIRECTORY", "CONTENT_PACK", "VSPHERE_FULL_SUPPORT", "CLUSTER", "IMPORT_CONTENT_PACKS", "QUERY", "ARCHIVE", "THIRD_PARTY_CONTENT_PACKS"], "maxCpus": 0, "uninitializedLicenseCapabilities": ["RBAC", "ACTIVE_DIRECTORY", "CONTENT_PACK"], "hasCpu": false, "maxOsis": 0, "licenseState": "ACTIVE", "licenses": {"12345678-90ab-cdef-1234-567890abcdef": {"infinite": true, "configuration": "1 Operating System Instance (OSI)", "status": "Active", "expiration": 0, "licenseKey": "4J2TK-XXXXX-XXXXX-XXXXX-XXXXX", "count": 0, "error": "", "typeEnum": "OSI", "id": "12345678-90ab-cdef-1234-567890abcdef"}}, "hasTap": false}'
-NEW_LICENSE_KEY = 'M502V-XXXXX-XXXXX-XXXXX-XXXXX'
-EXISTING_LICENSE_UUID = "12345678-90ab-cdef-1234-567890abcdef"
+logger = logging.getLogger(__name__)
 
 
-@pytest.fixture
-def adapter():
-    mockadapter = requests_mock.Adapter()
-    return mockadapter
+def first_active_license_key(licenses):
+    for guid, license in licenses.items():
+        print("Considering license guid", guid, "with payload", license)
+        if license.status == 'Active':
+            return (guid, license.licenseKey)
+        print("Skipping non-active license", license)
+    return None
 
 
-@pytest.fixture
-def connection():
-    credentials = Credentials(username="admin", password="pass", provider="mock")
-    connection = Server("mockserverlocal", auth=credentials)
-    return connection
+@pytest.mark.sideeffects
+def test_remove_first_license_and_re_add_it_again(connection):
+    licenseobject = LicenseKeys(connection)
+    previous_quantity = len(licenseobject)
+
+    assert previous_quantity > 0  # The server should already have a license key - we're going to try removing it
+
+    (guid, key) = first_active_license_key(licenseobject)
+    print("Retrieved license key", guid, key)
+
+    # Remove the key from the server; server may become unlicensed at this point
+    del licenseobject[guid]
+
+    # Which reduced the quantity by 1
+    assert len(licenseobject) == previous_quantity - 1
+
+    # Re-add key, will get a new url-fragment guid assigned
+    r = licenseobject.append(key)
+    assert r != guid
+
+    # Same quantity now as before
+    assert len(licenseobject) == previous_quantity
 
 
-@pytest.fixture
-def authenticatedconnection():
-    credentials = Credentials(username="admin", password="pass", provider="mock")
-    connection = Server("mockserverlocal", auth=credentials)
-    connection._requestsession.mount('https://', adapter)
-    connection.get("/sessions/current")
-    return connection
+def test_remove_nonexistent_license(connection):
+    licenseobject = LicenseKeys(connection)
+    previous_quantity = len(licenseobject)
+
+    # the fake key we're trying to delete really doesn't exist
+    for guid, license in licenseobject.items():
+        assert license != "000000000-000-0000-0000-000000000000"
+
+    with pytest.raises(KeyError):
+        del licenseobject["000000000-000-0000-0000-000000000000"]
+    assert len(licenseobject) == previous_quantity  # no change to number of license keys on server
 
 
-def requiresauthentication(fn):
-    """Server mock; fail any request which does not contain the expected Authorization header with HTTP/401.
-    Designed to be used as a `@requiresauthentication` decorator"""
-    @wraps(fn)
-    def wrapper(request, context):
-        if request.headers.get('Authorization') != 'Bearer hNhXgA':
-            context.status_code = 401
-            return ""
-        return fn(request, context)
-    return wrapper
+def test_iterate_over_licenses(connection):
+    licenseobject = LicenseKeys(connection)
+
+    counter = 0
+    for k, v in licenseobject.items():
+        assert k == v.id
+        assert hasattr(v, "licenseKey")
+        print(v)
+        counter += 1
+    assert counter > 0  # There should be at least one existing license key on the server
+    assert counter == len(licenseobject)  # counting and length agree
 
 
-def test_retrieve_license_list_requires_authentication(adapter, connection):
-    adapter_sessions = adapter.register_uri('POST',
-                                            '/api/v1/sessions',
-                                            text=SUCCESSFUL_LOGIN_JSON,
-                                            status_code=200)
-
-    @requiresauthentication
-    def callback_list_license(request, context):
-        return LICENSE_LIST_JSON
-
-    license_list = adapter.register_uri('GET',
-                                        '/api/v1/licenses',
-                                        status_code=200,
-                                        text=callback_list_license)
-
-    connection._requestsession.mount('https://', adapter)
-
-    licenseobject = LicenseKeys(connection, "/licenses")
-    assert license_list.call_count == 0  # merely taking the reference doesn't require a server connection
-    assert len(licenseobject) == 1  # server/fixture knows about one existing license key
-    assert license_list.call_count == 2  # one request received a HTTP/401, second HTTP/200 and a payload
-    assert adapter_sessions.call_count == 1  # we had to login
+def test_get_license_summary(connection):
+    """Retrive license summary, verify it contains a `hasOsi` boolean"""
+    licenseobject = LicenseKeys(connection)
+    assert isinstance(licenseobject.asdict().get('hasOsi'), bool)
+    assert isinstance(licenseobject()['hasOsi'], bool)
+    assert isinstance(licenseobject.hasCpu, bool)
+    assert isinstance(licenseobject.hasOsi, bool)

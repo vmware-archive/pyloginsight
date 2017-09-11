@@ -11,7 +11,11 @@ trailing_guid_pattern = re.compile('.*/([a-f0-9-]+)$')
 license_url_matcher = re.compile('/api/v1/licenses/([a-f0-9-]+)$')
 
 
-User = namedtuple("User", field_names=["username", "password", "provider", "userId"])
+def uuid_url_matcher(base):
+    return re.compile('/api/v1/' + base + '/([a-f0-9-]+)$')
+
+
+User = namedtuple("User", field_names=["username", "password", "provider", "email"])
 Session = namedtuple("Session", field_names=["userId", "ttl", "created"])
 
 
@@ -28,11 +32,21 @@ class RandomDict(dict):
 def requiresauthentication(fn):
     """Server mock; fail any request which does not contain the expected Authorization header with HTTP/401"""
     @wraps(fn)
-    def wrapper(self, request, context):
+    def wrapper(self, request, context, *args, **kwargs):
         session_id = request.headers.get('Authorization', "")[7:]
         if session_id in self.sessions_known:  # TODO: Don't ignore TTL
             mockserverlogger.info("Verified bearer has a valid sessionId")
-            return fn(self, request, context, session_id, self.sessions_known[session_id].userId)
+            return fn(self, request=request, context=context, session_id=session_id, user_id=self.sessions_known[session_id].userId, *args, **kwargs)
         context.status_code = 401
         return ""
+    return wrapper
+
+
+def guid(fn):
+    """Server mock; grab the object guid from the url"""
+    @wraps(fn)
+    def wrapper(self, request, context, *args, **kwargs):
+        guid = uuid_url_matcher('[^/]+').match(request._url_parts.path).group(1)
+        return fn(self, request=request, context=context, guid=guid, *args, **kwargs)
+
     return wrapper
