@@ -4,9 +4,8 @@ import logging
 import collections
 from .exceptions import ResourceNotFound, Cancel
 import abc
-import json
 import warnings
-from marshmallow import Schema, fields, pre_load, post_load, post_dump
+from marshmallow import Schema, pre_load, post_dump
 
 
 logger = logging.getLogger(__name__)

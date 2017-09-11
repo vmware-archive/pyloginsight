@@ -279,7 +279,7 @@ class Connection(object):
 
         # Directly call without sending an authorization header
         try:
-            response = self._call(
+            self._call(
                 method="POST",
                 url="/deployment/new",
                 json=deployment_payload,
@@ -292,7 +292,7 @@ class Connection(object):
         self.wait_until_started()
 
     def wait_until_started(self):
-        poll = self._call(
+        self._call(
             method="POST",
             url="/deployment/waitUntilStarted"
         )

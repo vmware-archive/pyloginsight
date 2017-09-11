@@ -30,53 +30,6 @@ from .exceptions import TransportError
 logger = logging.getLogger(__name__)
 
 
-class LicenseKeys(collections.MutableMapping):
-    """A server-backed dictionary (hashmap) of items embedded in the
-    Adding, deleting or updating an item usually means POST/PUTing a single item's resource."""
-
-    def __init__(self, connection, baseurl):
-        self._connection = connection
-        self._baseurl = baseurl
-
-    def __delitem__(self, item):
-        self._connection.delete("{0}/{1}".format(self._baseurl, item))
-        return True
-
-    def append(self, licensekey):
-        """A list-like interface for addding a new licence.
-        The server will assign a new UUID when inserting into the mapping.
-        A subsequent request to keys/iter will contain the new license in the value."""
-        self._connection.post(self._baseurl, json={"key": licensekey})
-        # TODO: We should really use the response since it contains the UUID.
-        return True
-
-    def __getitem__(self, item):
-        """Retrieve details for a license key. Could raise KeyError."""
-        return self._rootobject['licenses'][item]
-
-    def keys(self):
-        return self._rootobject['licenses'].keys()
-
-    def __iter__(self):
-        for key in self.keys():
-            yield key
-
-    def __len__(self):
-        return len(self._rootobject["licenses"])
-
-    def __setitem__(self, key, value):
-        raise NotImplementedError
-
-    @property
-    def _rootobject(self):
-        return self._connection.get(self._baseurl)
-
-    @property
-    def summary(self):
-        """Dictionary summarizing installed licenses and active features"""
-        return self._rootobject
-
-
 class LicenseKey(RemoteObjectProxy, attrdict.AttrDict):
     class MarshmallowSchema(Schema):
         id = fields.Str()
