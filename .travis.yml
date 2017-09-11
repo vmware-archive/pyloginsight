@@ -26,7 +26,6 @@ install:
 - pip install requests_mock==1.1.0
 - pip install pytest-cov==2.4.0
 - pip install coveralls==1.1
-- pip install --upgrade --pre vcd-cli
 - python setup.py --version
 - python setup.py develop
 script:
@@ -34,7 +33,6 @@ script:
   --cov-fail-under=60 --cov-report term-missing
 after_success:
 - coveralls
-- vcd vapp delete "$MACHINE" --yes --force
 before_deploy:
 - git describe
 - echo TRAVIS_TAG $TRAVIS_TAG
