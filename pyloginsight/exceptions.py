@@ -28,3 +28,6 @@ class ServerWarning(UserWarning):
 
 class NotBootstrapped(ServerError):
     """The server has not yet been bootstrapped."""
+
+class AlreadyBootstrapped(ServerError):
+    """The server has already been bootstrapped, you can't bootstrap it again."""

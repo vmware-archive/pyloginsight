@@ -423,7 +423,7 @@ class Server(object):
 
     @property
     def license(self):
-        return LicenseKeys(self._connection, "/licenses")
+        return LicenseKeys(self._connection)
 
     @property
     def roles(self):

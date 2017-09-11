@@ -13,7 +13,7 @@ class MockedSessionsMixin(object):
 
         self.sessions_known = RandomDict()
         self.users_known = RandomDict()
-        self.users_known["012345678-9ab-cdef-0123-456789abcdef"] = User('admin', 'password', 'mock', "admin@local")
+        self.users_known["012345678-9ab-cdef-0123-456789abcdef"] = User('admin', 'VMware123!', 'Local', "admin@local")
 
         self.register_uri('POST', '/api/v1/sessions', text=self.session_new, status_code=200)
         self.register_uri('GET', '/api/v1/sessions/current', text=self.session_current, status_code=200)

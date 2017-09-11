@@ -182,9 +182,6 @@ class ServerAddressableObject(ABC):
         if ServerDictMixin in self.__class__.__mro__ and ServerListMixin in self.__class__.__mro__:
             raise TypeError("ServerDictMixin and ServerListMixin are mutually-exclusive concepts. They both try to define __iter__")
 
-        print("init", self, "with _basekey", self._basekey)
-
-
     @property
     @abc.abstractmethod
     def _baseurl(self):
@@ -200,6 +197,7 @@ class ServerAddressableObject(ABC):
         An idealized representation of the object.
         Default implementation returns the top-level dict; override in child class.
         """
+        warnings.warn("TODO: Should a ServerAddressableObject be callable?")
         return self.asdict()
 
     # The combination of __dir__ and __getattr__ makes it seem like realized objects have properties that are populated on-demand,

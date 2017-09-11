@@ -22,7 +22,7 @@ from . import __version__ as version
 import requests
 import logging
 import warnings
-from .exceptions import ResourceNotFound, TransportError, Unauthorized, ServerWarning, NotBootstrapped
+from .exceptions import ResourceNotFound, TransportError, Unauthorized, ServerWarning, NotBootstrapped, AlreadyBootstrapped
 
 from .models import Server
 
@@ -278,17 +278,22 @@ class Connection(object):
         }
 
         # Directly call without sending an authorization header
-        response = self._call(
-            method="POST",
-            url="/deployment/new",
-            json=deployment_payload,
-            sendauthorization=False)
+        try:
+            response = self._call(
+                method="POST",
+                url="/deployment/new",
+                json=deployment_payload,
+                sendauthorization=False)
+        except TransportError as e:
+            if e.args[0] == 403:
+                raise AlreadyBootstrapped(e)
 
         print("response", response)
         print("Bootstrap has started, but it might take a while for server to come up")
+        self.wait_until_started()
 
+    def wait_until_started(self):
         poll = self._call(
             method="POST",
             url="/deployment/waitUntilStarted"
         )
-        print("Poll complete:", poll)
