@@ -4,24 +4,18 @@ from distutils.version import StrictVersion
 
 
 def test_version_attributes(connection):
-    remoteversionobject = Version.from_server(connection)
+    remoteversionobject = Version.from_server(connection, "/version")
     assert remoteversionobject.release_name
-
-def test_version_dict(connection):
-    remoteversionobject = Version.from_server(connection)
-    for expecteddictentry in ["releaseName"]:
-        assert expecteddictentry in remoteversionobject._raw
-
 
 
 def test_version_not_slicable(connection):
-    remoteversionobject = Version.from_server(connection)
+    remoteversionobject = Version.from_server(connection, "/version")
     with pytest.raises(TypeError):  # dynamic properties are not slice-accessible; that's reserved for the collections mixins
         discard = remoteversionobject["releaseName"]
 
 
 def test_version_not_iterable(connection):
-    remoteversionobject = Version.from_server(connection)
+    remoteversionobject = Version.from_server(connection, "/version")
     with pytest.raises(TypeError):
         for _ in remoteversionobject:
             discard = _

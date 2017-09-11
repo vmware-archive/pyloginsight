@@ -4,7 +4,6 @@ import logging
 import collections
 from .exceptions import ResourceNotFound, Cancel
 import abc
-import attr
 import json
 import warnings
 from marshmallow import Schema, fields, pre_load, post_load, post_dump
@@ -12,14 +11,6 @@ from marshmallow import Schema, fields, pre_load, post_load, post_dump
 
 logger = logging.getLogger(__name__)
 ABC = abc.ABCMeta('ABC', (object,), {})
-
-
-def make_class(schema, title):
-    s4 = json.loads(schema)
-    s4["title"] = title
-    builder = python_jsonschema_objects.ObjectBuilder(s4)
-    ns = builder.build_classes()
-    return getattr(ns, title)
 
 
 class ServerDictMixin(collections.MutableMapping):
@@ -226,7 +217,6 @@ class RemoteObjectProxy(object):
     __connection = None
     __url = None
 
-
     def publish_new_instance_to_server(self, connection, baseurl):
         return connection.post(baseurl, json=self._serialize())
 
@@ -313,9 +303,10 @@ class ServerProperty(object):
     Descriptor for a server's object property. Makes outbound HTTP requests on access.
     """
 
-    def __init__(self, clazz, readonly=False):
+    def __init__(self, clazz, url=None, readonly=False):
         self.clazz = clazz
         self.value = None
+        self.url = url
 
         if readonly:
             self.__set__ = False
@@ -336,7 +327,7 @@ class ServerProperty(object):
 
         #return self.value
         if callable(self.clazz):
-            return self.clazz.from_server(instance._connection)
+            return self.clazz.from_server(instance._connection, self.url)
         else:
             raise AttributeError("Cannot retrieve {0} from {1}".format(self.__class__.__name__, objtype.__name__))
 
@@ -351,31 +342,6 @@ class ServerProperty(object):
 
         raise NotImplementedError
 
-
-@attr.s
-class Entity(object):
-    _url = attr.ib(default=None)
-    _raw = None
-
-    @classmethod
-    def from_server(cls, connection, url=None):
-        if cls._url == None and url == None:
-            raise AttributeError("Cannot read object from server without a url")
-        body = connection.get(url or cls._url)
-        instance = cls(url=url, **body)
-        instance._raw = body
-        return instance
-
-    def to_server(self, connection, url=None):
-        if url is None:
-            url = self._url
-        body = attr.asdict(self)
-        del body['_url']
-        response = connection.put(url, json=body)
-        return response
-
-    def __get__(self, instance, objtype):
-        print("__get__(", instance, objtype)
 
 class BaseSchema(Schema):
     # Custom options

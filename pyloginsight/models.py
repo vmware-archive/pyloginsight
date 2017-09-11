@@ -21,7 +21,7 @@ from distutils.version import StrictVersion
 import logging
 import collections
 from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
-from .abstracts import Entity, ServerProperty, RemoteObjectProxy, BaseSchema
+from .abstracts import ServerProperty, RemoteObjectProxy, BaseSchema
 import json
 import attrdict
 from marshmallow import Schema, fields
@@ -106,40 +106,7 @@ class LicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableO
     #    return self.asdict().get("licenses")
 
 
-class LegacyVersion(ServerAddressableObject, StrictVersion):
-    """Server's self-reported current version number."""
-    _baseurl = "/version"
-
-    def __call__(self):
-        """
-        Extract a Major.Minor.Patch version number from the server's response,
-        and update internal state.
-        :return: self, which acts like a distutils.StrictVersion
-        """
-        self.parse(self.asdict().get("version").split("-", 1)[0])
-        return self
-
-    @property
-    def build(self):
-        """
-        Extract build number from version string returned by server.
-        Every official build has a distinct, non-repeating build number.
-        Higher build numbers do not necessarily indicate a superset of functionality.
-        :return: int
-        """
-        return int(self.asdict().get("version").split("-", 1)[1])
-
-    @property
-    def raw(self):
-        """
-        Raw version string returned by server. Has the format `Major.Minor.Patch-build.flag.names`,
-        where flag names are strings like "TP" or "BETA".
-        :return: str
-        """
-        return self.asdict().get("version")
-
-
-class Version(StrictVersion, Entity):
+class Version(StrictVersion, RemoteObjectProxy):
     """
     Server's self-reported current version number.
 
@@ -151,7 +118,7 @@ class Version(StrictVersion, Entity):
     prerelease = None
     _url = "/version"
 
-    def __init__(self, url, version, releaseName, **kwargs):
+    def __init__(self, version, releaseName, **kwargs):
         self.release_name = releaseName
         self.vstring, self.build_string = version.split("-", 1)
         super(Version, self).__init__(self.vstring)
@@ -166,6 +133,11 @@ class Version(StrictVersion, Entity):
         """
         return int(self.build_string)
 
+    class MarshmallowSchema(Schema):
+        version = fields.Str()
+        releaseName = fields.Str()
+
+    __schema__ = MarshmallowSchema
 
 
 class Dataset(ServerAddressableObject):
@@ -396,7 +368,7 @@ class Server(object):
     def __init__(self, connection):
         self._connection = connection
 
-    version = ServerProperty(Version)
+    version = ServerProperty(Version, "/version")
 
     @property
     def is_bootstrapped(self):

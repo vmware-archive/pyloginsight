@@ -2,11 +2,10 @@ from __future__ import print_function
 import logging
 import pytest
 import json
-import attr
 import datetime
 
 from mock_loginsight_server import MockedConnection
-from pyloginsight.abstracts import RemoteObjectProxy, make_class
+from pyloginsight.abstracts import RemoteObjectProxy
 
 import attrdict
 
@@ -17,7 +16,8 @@ pytestmark = pytest.mark.exampleapi  # Cannot succeed against a real server
 
 logger = logging.getLogger(__name__)
 
-
+"""
+from pyloginsight.abstracts import make_class
 SCHEMA = '''{
                 "$schema": "http://json-schema.org/draft-04/schema",
                 "properties": {
@@ -36,14 +36,15 @@ SCHEMA = '''{
 # Both of these objects have the same structure: A single string attribute named "attribute".
 
 class ExampleObjectJson(make_class(SCHEMA, "Example"), RemoteObjectProxy):
-    """An example object, defined by the jsonschema-objects"""
+    # An example object, defined by the jsonschema-objects
 
+import attr
 @attr.s
 class ExampleObjectAttribs(RemoteObjectProxy):
-    """An example object, defined by attr.ibs"""
+    #An example object, defined by attr.ibs
     attribute = attr.ib(str)
     id = attr.ib(default=None)
-
+"""
 
 
 class ExampleObjectMarshmallow(RemoteObjectProxy, attrdict.AttrDict):
