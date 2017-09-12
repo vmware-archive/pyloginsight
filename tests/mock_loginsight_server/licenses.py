@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import requests_mock
 from collections import Counter
 import json

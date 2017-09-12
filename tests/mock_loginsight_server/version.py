@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import requests_mock
 import json
 import logging
@@ -11,7 +12,7 @@ class MockedVersionMixin(requests_mock.Adapter):
     def __init__(self, **kwargs):
         super(MockedVersionMixin, self).__init__(**kwargs)
 
-        self.version = {"releaseName": "GA","version": "1.2.3-4567890"}
+        self.version = {"releaseName": "GA", "version": "1.2.3-4567890"}
         self.register_uri('GET', '/api/v1/version', text=self.callback_get_version, status_code=200)
 
     @requiresauthentication

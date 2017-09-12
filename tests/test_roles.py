@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 import pytest
 import requests_mock
 from pyloginsight.models import Server, Roles, Role
@@ -38,11 +40,6 @@ adapter.register_uri(method='DELETE', url='https://mockserver:9543/api/v1/groups
                      text=DELETE_GROUPS_ID_404, status_code=404)
 adapter.register_uri(method='DELETE', url='https://mockserver:9543/api/v1/groups/00000000-0000-0000-0000-000000000004',
                      text=DELETE_GROUPS_ID, status_code=200)
-
-
-#credentials = Credentials(username='admin', password='secret', provider='Local')
-#server = Server(hostname='mockserver', auth=credentials)
-#server._requestsession.mount('https://', adapter)
 
 
 def test_property(server):
@@ -135,13 +132,12 @@ def test_append(server):
         server.roles.append()
 
 
-
 def test_way_i_want_to_use_roles_and_datasets(server):
 
     # NO HTTP CONNECTIONS
 
     r = Role(name="foo", description="", datasets=[], capabilities=[], users=[])
-    r.datasets.append( server.datasets[1] )
+    r.datasets.append(server.datasets[1])
     r.capabilities.append("ANALYTICS")
 
     # 1 HTTP POST to /groups
@@ -161,7 +157,6 @@ def test_way_i_want_to_use_roles_and_datasets(server):
 def test_property_changes(server):
     # Update name on existing role
 
-
     server.roles[4].name = "Charlie"
     role = server.roles[4]
     role.name = "Charlie"
@@ -172,12 +167,11 @@ def test_dict_sync(server):
     server['roles'] = []
 
     # Server does something magical that causes an HTTP POST
-    server['roles'].append({"name":"whatever", "capabilities":[]})
+    server['roles'].append({"name": "whatever", "capabilities": []})
 
     # Server does something even more magical that causes an HTTP POST
     roles = server['roles']
-    roles.append({"name":"whatever", "capabilities":[]})
-
+    roles.append({"name": "whatever", "capabilities": []})
 
     server = None
 

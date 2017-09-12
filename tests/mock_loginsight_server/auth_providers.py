@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
+
 import requests_mock
 import json
 import logging
-from .utils import requiresauthentication
 
 mockserverlogger = logging.getLogger("LogInsightMockAdapter")
 
@@ -19,8 +20,7 @@ class MockedAuthProvidersMixin(requests_mock.Adapter):
             text=self.callback_get_auth_providers
         )
 
-    @requiresauthentication
-    def callback_get_auth_providers(self, request, context, session_id, user_id):
+    def callback_get_auth_providers(self, request, context):
         return json.dumps(self.auth_providers)
 
     def prep(self):

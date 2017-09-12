@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # String operators are case-insensitive filters that can be applied to text fields:
 CONTAINS = "CONTAINS "
 NOT_CONTAINS = "NOT_CONTAINS "

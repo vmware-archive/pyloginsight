@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import print_function
 import logging
 import pytest
@@ -76,6 +77,7 @@ def mockonly(f):
             pytest.skip("Test only applies to a MockedConnection")
         return f(connection, ExampleObject)
     return wraps
+
 
 @mockonly
 def test_get_attribute(connection, ExampleObject):
