@@ -1,8 +1,11 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 import pytest
 import requests_mock
 from distutils.version import StrictVersion
 
 from pyloginsight import updates
+
 
 @pytest.mark.skip("No network")
 def test_upgrade_path():

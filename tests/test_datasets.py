@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 
 
 import pytest
@@ -22,11 +24,6 @@ adapter.register_uri('POST', 'https://mockserver:9543/api/v1/datasets', text=POS
 adapter.register_uri('DELETE', 'https://mockserver:9543/api/v1/datasets/7c677664-e373-456d-ba85-6047dfc84452', text=DELETE_DATASETS_200, status_code=200)
 adapter.register_uri('DELETE', 'https://mockserver:9543/api/v1/datasets/00000000-0000-0000-0000-000000000050', text=DELETE_DATASETS_400, status_code=400)
 adapter.register_uri('DELETE', 'https://mockserver:9543/api/v1/datasets/raspberry', text=DELETE_DATASETS_400_2, status_code=400)
-
-
-#creds = Credentials(username='admin', password='secret', provider='Local')
-#server = Server(hostname='mockserver', verify=False)
-#server._requestsession.mount('https://', adapter)
 
 
 def test_delitem(server):

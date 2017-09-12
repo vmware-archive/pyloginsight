@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # VMware vRealize Log Insight SDK
 # Copyright (c) 2015 VMware, Inc. All Rights Reserved.
@@ -17,7 +18,6 @@
 
 
 from distutils.version import StrictVersion
-#from .connection import Credentials
 import logging
 import collections
 from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class LicenseKey(RemoteObjectProxy, attrdict.AttrDict):
+    """A single license key for Log Insight."""
     class MarshmallowSchema(Schema):
         id = fields.Str()
         error = fields.Str(load_only=True)
@@ -54,10 +55,6 @@ class LicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableO
             value = value['licenseKey']
         return {'key': value}
 
-    #@property
-    #def _iterable(self):
-    #    return self.asdict().get("licenses")
-
 
 class Version(StrictVersion, RemoteObjectProxy):
     """
@@ -71,10 +68,10 @@ class Version(StrictVersion, RemoteObjectProxy):
     prerelease = None
     _url = "/version"
 
-    def __init__(self, version, releaseName, **kwargs):
-        self.release_name = releaseName
+    def __init__(self, version, release_name, **kwargs):
+        self.release_name = release_name
         self.vstring, self.build_string = version.split("-", 1)
-        super(Version, self).__init__(self.vstring)
+        super(Version, self).__init__(self.vstring, **kwargs)
 
     @property
     def build(self):
@@ -88,7 +85,7 @@ class Version(StrictVersion, RemoteObjectProxy):
 
     class MarshmallowSchema(Schema):
         version = fields.Str()
-        releaseName = fields.Str()
+        releaseName = fields.Str(attribute="release_name")
 
     __schema__ = MarshmallowSchema
 
@@ -108,7 +105,6 @@ class Dataset(ServerAddressableObject):
     type = None
     constraints = None
 
-
     def __init__(self, name, description="", id=None, type="OR", constraints=None):
         self.id = id
         self.name = name
@@ -125,16 +121,6 @@ class Dataset(ServerAddressableObject):
             value = None
             fieldType = "STRING"
             hidden = False
-
-
-
-    GET_DATASETS_200 = '{"dataSets":[' \
-                       '{"id":"7c677664-e373-456d-ba85-6047dfc84452",' \
-                       '"name":"vobd",' \
-                       '"description":' \
-                       '"Events from the vobd daemon on ESXi",' \
-                       '"type":"OR",' \
-                       '"constraints":[{"name":"appname","operator":"CONTAINS","value":"vobd","fieldType":"STRING","hidden":false}]}]}'
 
 
 class Datasets(collections.MutableMapping):
@@ -190,6 +176,8 @@ class Datasets(collections.MutableMapping):
 
 
 _Role = collections.namedtuple('Role', 'name, description, datasets, capabilities, users')
+
+
 class Role(_Role):
     def __new__(cls, name, description="", datasets=[], capabilities=[], users=[]):
         if not isinstance(datasets, ServerListMixin):
@@ -202,8 +190,8 @@ class Role(_Role):
         self = super(Role, cls).__new__(cls, name, description, datasets, capabilities, users)
         return self
 
-class Roles(collections.MutableMapping):
 
+class Roles(collections.MutableMapping):
     def __init__(self, connection):
         self._connection = connection
 
@@ -273,17 +261,12 @@ class Roles(collections.MutableMapping):
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
 
 
-
-
 class User(RemoteObjectProxy, attrdict.AttrDict):
-    #_singlekey = "user"
-
     class MarshmallowSchema(BaseSchema):
         __envelope__ = {
             'single': 'user',
             'many': 'users',
         }
-        #__model__ = User
 
         id = fields.Str()
         username = fields.Str()
@@ -294,7 +277,7 @@ class User(RemoteObjectProxy, attrdict.AttrDict):
         groupIds = fields.List(fields.String())
         capabilities = fields.List(fields.String())
         userCapabilities = fields.List(fields.String())
-        userDataSets= fields.List(fields.String())
+        userDataSets = fields.List(fields.String())
         typeEnum = fields.Str()
     __schema__ = MarshmallowSchema
 
@@ -306,7 +289,6 @@ class Users(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject)
     _fetchone = True
 
     def keys(self):
-        print(self._iterable)
         return [x['id'] for x in self._iterable]
 
     def _createspec(self, instance):

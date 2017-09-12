@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # VMware vRealize Log Insight SDK
 # Copyright (c) 2015 VMware, Inc. All Rights Reserved.
@@ -14,7 +15,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 
 from requests.compat import urlunparse, urlparse
 from . import __version__ as version
@@ -207,7 +207,6 @@ class Connection(object):
         else:
             raise TransportError(r.status_code, payload)
 
-
     def post(self, url, data=None, json=None, params=None, sendauthorization=True):
         """
         Attempt to post to server with current authorization credentials.
@@ -257,7 +256,6 @@ class Connection(object):
     @property
     def server(self):
         return Server(self)
-
 
     def bootstrap(self, email=''):
         """

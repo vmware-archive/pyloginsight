@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 import logging
 import time
@@ -54,7 +55,6 @@ class MockedSessionsMixin(object):
 
     def session_inspection_user_list(self):
         return set([usersession.userId for usersession in self.sessions_known.values()])
-
 
     @requiresauthentication
     def callback_user_list(self, request, context, session_id, user_id):

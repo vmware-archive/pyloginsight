@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 import pytest
 from pyloginsight.models import Version
 from distutils.version import StrictVersion

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import logging
 import collections
@@ -33,8 +34,6 @@ class ServerDictMixin(collections.MutableMapping):
         """
         Retrieve details for a single item from the server. Could raise KeyError.
         """
-        print("Attempting to retrieve item:{}".format(item))
-
         url = "{0}/{1}".format(self._baseurl, item)
 
         if hasattr(self, "_fetchone"):
@@ -60,7 +59,6 @@ class ServerDictMixin(collections.MutableMapping):
                 yield (k, self._single.from_dict(self._connection, url, {rewrap: v} if rewrap else v))
 
         else:
-            #raise NotImplementedError("This hasn't been verified yet.")
             for v in d:
                 item = v['id']
                 url = "{0}/{1}".format(self._baseurl, item)
@@ -148,14 +146,13 @@ class AppendableServerDictMixin(object):
         # new UUID for this object, probably accessible at _baseurl/{id}
         o = self._single.from_dict(self._connection, url=None, data=resp)
 
-        print("Created new object {}/{}".format(self._baseurl, o))
+        logger.debug("Created new object {}/{}".format(self._baseurl, o))
         url = "{}/{}".format(self._baseurl, o['id'])
 
         # TypeError: 'X' does not allow attribute creation.
 
         object.__setattr__(o, "__url", url)
         return o['id']
-
 
     def _createspec(self, value):
         return value._serialize()
@@ -236,7 +233,6 @@ class RemoteObjectProxy(object):
         body = connection.get(url)
         if hasattr(cls, '_singlekey'):
             body = body[cls._singlekey]
-        print("from_server url {} retrieved {}".format(url, body))
 
         self = cls.from_dict(connection, url, body)
         return self
@@ -297,6 +293,7 @@ class RemoteObjectProxy(object):
         """Default behavior is to iterate over a named child element."""
         return self.get(self._basekey)
 
+
 class ServerProperty(object):
     """
     Descriptor for a server's object property. Makes outbound HTTP requests on access.
@@ -314,7 +311,6 @@ class ServerProperty(object):
         for attrib in dir(owner):
             if getattr(owner, attrib) is self:
                 return attrib
-        #print ("Fallthrough lookup_attrib on", owner)
 
     def __get__(self, instance, objtype):
         if instance is None:
@@ -322,9 +318,8 @@ class ServerProperty(object):
         attribute_name = self.lookup_attrib(objtype)
         self._name = attribute_name
 
-        print("Trying to read server property", attribute_name, "from", instance)
+        logger.debug("Trying to read server property {} from {}".format(attribute_name, instance))
 
-        #return self.value
         if callable(self.clazz):
             return self.clazz.from_server(instance._connection, self.url)
         else:
@@ -336,7 +331,7 @@ class ServerProperty(object):
         attribute_name = self.lookup_attrib(type(instance))
         self._name = attribute_name
 
-        print("Trying to write server property", attribute_name, "from", instance)
+        logger.debug("Trying to write server property {} from {}".format(attribute_name, instance))
         self.value = value
 
         raise NotImplementedError
@@ -364,7 +359,3 @@ class BaseSchema(Schema):
     def wrap_with_envelope(self, data, many):
         key = self.get_envelope_key(many)
         return {key: data}
-
-    #@post_load
-    #def make_object(self, data):
-    #    return self.__model__(**data)

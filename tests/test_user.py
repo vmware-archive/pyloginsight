@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 import pytest
 from pyloginsight.models import Users, User
 import uuid
@@ -24,7 +26,6 @@ def test_add_user_and_remove_it_again(connection):
 
     refetch_user = d[new_user_id]
     assert refetch_user.username == username
-
 
     # Remove the key from the server; server may become unlicensed at this point
     del d[new_user_id]

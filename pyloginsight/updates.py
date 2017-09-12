@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 """
 Determine whether upgrades are available -from- a given
@@ -7,7 +8,6 @@ version of Log Insight.
 Makes an outbound HTTPS request to VMware Upgrade Path API.
 This module is not imported by pyloginsight.
 """
-
 
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 from distutils.version import StrictVersion

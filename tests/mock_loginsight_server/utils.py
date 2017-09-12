@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from functools import wraps
 import logging
 import uuid

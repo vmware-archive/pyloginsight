@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from mock_loginsight_server import MockedConnection
 from pyloginsight.connection import Connection, Credentials
 from pyloginsight.exceptions import ServerWarning, AlreadyBootstrapped
@@ -7,6 +9,10 @@ from collections import namedtuple
 import logging
 import pytest
 from requests.adapters import HTTPAdapter
+
+import socket
+import urllib3
+import warnings
 
 ROOTLOGGER = False
 
@@ -21,28 +27,28 @@ if ROOTLOGGER:
     logging.captureWarnings(True)
 
 
-import socket
 socket.setdefaulttimeout(1)
-
-import urllib3
 urllib3.disable_warnings()
-
-import warnings
 warnings.simplefilter("ignore", ServerWarning)
 
 ConnectionContainer = namedtuple("Connections", ["clazz", "hostname", "port", "auth", "verify"])
 
 
 def pytest_addoption(parser):
-    parser.addoption("--server", action="store", metavar="SERVER:PORT", default="mockserverlocal:9543",
+    parser.addoption(
+        "--server", action="store", metavar="SERVER:PORT", default="mockserverlocal:9543",
         help="Also run tests against https://SERVER:PORT, can be listed multiple times. Mock server @ mockserverlocal:9543")
-    parser.addoption("--username", action="store", default="admin",
+    parser.addoption(
+        "--username", action="store", default="admin",
         help="Used with --server")
-    parser.addoption("--password", action="store", default="VMware123!",
+    parser.addoption(
+        "--password", action="store", default="VMware123!",
         help="Used with --server")
-    parser.addoption("--provider", action="store", default="Local",
+    parser.addoption(
+        "--provider", action="store", default="Local",
         help="Used with --server")
-    parser.addoption("--license", action="store", required=False,
+    parser.addoption(
+        "--license", action="store", required=False,
         help="Apply license to --server if needed")
 
 
@@ -69,15 +75,16 @@ def pytest_generate_tests(metafunc):
             clazz = Connection
 
         configs.append(
-            ConnectionContainer(clazz,
-                                hostname,
-                                int(port),
-                                Credentials(
-                                    metafunc.config.getoption("username"),
-                                    metafunc.config.getoption("password"),
-                                    metafunc.config.getoption("provider"),
-                                ),
-                                False
+            ConnectionContainer(
+                clazz,
+                hostname,
+                int(port),
+                Credentials(
+                    metafunc.config.getoption("username"),
+                    metafunc.config.getoption("password"),
+                    metafunc.config.getoption("provider"),
+                ),
+                False
             )
         )
 
@@ -118,10 +125,7 @@ def connection(servers, licensekey):
 
 
 # Matrix of bad credentials multipled by server list
-@pytest.fixture(params=[
-        Credentials("fake", "fake", "fake"),
-        None
-])
+@pytest.fixture(params=[Credentials("fake", "fake", "fake"), None])
 def wrong_credential_connection(servers, request, licensekey):
     """A pyloginsight.connection to a remote server, with non-functional credentials."""
     c = servers._replace(auth=request.param)
@@ -155,4 +159,4 @@ def ensure_server_bootstrapped_and_licensed(connection, licensekey):
 
     ensure_server_bootstrapped_and_licensed.cache.append(connection._apiroot)
 
-ensure_server_bootstrapped_and_licensed.cache=[]
+ensure_server_bootstrapped_and_licensed.cache = []

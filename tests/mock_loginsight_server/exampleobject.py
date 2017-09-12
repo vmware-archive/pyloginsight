@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import requests_mock
 import json
 import logging
@@ -48,13 +49,12 @@ class MockedExampleObjectMixin(requests_mock.Adapter):
     # Collections
 
     def callback_list_example(self, request, context):
-        return json.dumps({"summary":"Examples!", "examples": self.known_examples})
+        return json.dumps({"summary": "Examples!", "examples": self.known_examples})
 
     def callback_append_example(self, request, context):
         body = request.json()
         body['id'] = self.known_examples.append(body)
         return json.dumps(body)
-
 
     # Instances
     @has_guid

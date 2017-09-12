@@ -1,9 +1,10 @@
-
+# -*- coding: utf-8 -*-
 
 from requests import HTTPError
 
 
-class ServerError(BaseException): pass
+class ServerError(BaseException):
+    """A generic error reported by the server."""
 
 
 class ResourceNotFound(ValueError):
@@ -28,6 +29,7 @@ class ServerWarning(UserWarning):
 
 class NotBootstrapped(ServerError):
     """The server has not yet been bootstrapped."""
+
 
 class AlreadyBootstrapped(ServerError):
     """The server has already been bootstrapped, you can't bootstrap it again."""
