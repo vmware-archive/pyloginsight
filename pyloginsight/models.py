@@ -26,6 +26,7 @@ import json
 import attrdict
 from marshmallow import Schema, fields
 from .exceptions import TransportError
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,87 @@ class LicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableO
         if isinstance(value, LicenseKey):
             value = value['licenseKey']
         return {'key': value}
+
+
+class Host(RemoteObjectProxy, attrdict.AttrDict):
+    """ A single host returned by Log Insight. """
+    class MarshmallowSchema(Schema):
+        hostname = fields.Str(missing=None)
+        lastReceived = fields.DateTime(attribute='last_received')
+        sourcePath = fields.Str(attribute='source', missing=None)
+
+
+class Hosts(collections.Sequence, ServerAddressableObject):
+    """ A Sequence of Host objects returned from Log Insight sorted by their lastReceived property. """
+    _baseurl = '/hosts'
+    _single = Host
+    _basekey = 'hosts'
+
+    def __iter__(self, reverse=False):
+        hosts_max = 100000
+        sources_max = 100000
+        hosts_from = 1
+        hosts_to = 200
+        sort_order = 'asc' if reverse else 'desc'
+
+        # Iterate over "hosts" and "sources" with upwards of 200 hosts per response.
+        # Exit when we've reached both the "hosts" and the "sources" maximums.
+        while hosts_from < hosts_max and hosts_from < sources_max:
+
+            # If our "hosts" counters exceeds the "hosts", return an empty list to avoid an unnecessary requests.
+            if hosts_from < hosts_max:
+                hosts_response = self._connection.post(self._baseurl, json={'loadMissingHosts': False,
+                                                                            'from': hosts_from, 'to': hosts_to,
+                                                                            'sortOrder': sort_order})
+            else:
+                hosts_response = {'hosts': []}
+
+            # The same for "sources".
+            if hosts_from < sources_max:
+                sources_response = self._connection.post(self._baseurl, json={'loadMissingHosts': True,
+                                                                              'from': hosts_from, 'to': hosts_to,
+                                                                              'sortOrder': sort_order})
+            else:
+                sources_response = {'hosts': []}
+
+            # Add "hosts" and "sources" lists and sort the results by the "lastReceived" value.
+            sorted_objects = sorted(hosts_response['hosts']+sources_response['hosts'],
+                                    key=lambda k: k['lastReceived'], reverse=reverse)
+
+            # Yield host objects in the sorted order.
+            for host in sorted_objects:
+                last_received_in_seconds = int(host['lastReceived']/1000)
+                date_format = '%Y-%m-%dT%H:%M:%SZ'
+                host['lastReceived'] = datetime.utcfromtimestamp(last_received_in_seconds).strftime(date_format)
+                yield Host().from_dict(connection=self._connection, url=self._baseurl, data=host)
+
+            # Increment to the next pages if necessary.
+            hosts_from += 200
+            hosts_to += 200
+            hosts_max = hosts_response['count']
+            sources_max = sources_response['count']
+
+    def __len__(self):
+        total = 0
+        for mode in [True, False]:
+            total += int(self._connection.post(self._baseurl, json={'loadMissingHosts': mode})['count'])
+        return total
+
+    def __getitem__(self, item):
+        # Interleaving the results in the __iter__ may allow us to perform getitem with fewer requests.
+        return [host for host in self][item]
+
+    def __reversed__(self):
+        return self.__iter__(reverse=True)
+
+    # The __contains__ method was not implemented because host objects on Log Insight do not have an ID. Although the
+        # API does accept a searchTerm parameter that could be used to identify hosts by their FQDN or IP, the API will
+        # return partial matches. It may be possible for the library to use the hostname or sourcePath properties
+        # as identifiers, but then the Hosts and Host class would need to be re-implemented as RemoteObjectProxy type
+        # sub-class.
+        #
+        # Tests using __contains__ will still work. See
+        # https://docs.python.org/3.6/reference/datamodel.html#object.__contains__
 
 
 class Version(StrictVersion, RemoteObjectProxy):
@@ -339,5 +421,9 @@ class Server(object):
     @property
     def datasets(self):
         return Datasets(self._connection)
+
+    @property
+    def hosts(self):
+        return Hosts(self._connection)
 
     # TODO: Model the server features as properties
