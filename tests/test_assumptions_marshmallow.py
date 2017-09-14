@@ -115,10 +115,9 @@ class UserSchema(BaseSchema):
     email = fields.Email()
 
 
-
 def test_example_enveloping_revisited_get_single_instance(instance_from_server):
 
-    ser = User.__schema__()
+    ser = UserSchema()
     user_dict = ser.load(instance_from_server).data
 
     assert 'email' in user_dict
@@ -127,7 +126,7 @@ def test_example_enveloping_revisited_get_single_instance(instance_from_server):
 
 def test_example_enveloping_revisited_get_list_of_instances(list_from_server):
 
-    ser = User.__schema__()
+    ser = UserSchema()
     parse = ser.load(list_from_server, many=True)
     print(parse)
     user_objs = parse.data
@@ -140,7 +139,7 @@ def test_example_enveloping_revisited_get_list_of_instances(list_from_server):
 
 def test_example_enveloping_revisited_get_dict_of_instances(dict_from_server):
 
-    ser = User.__schema__()
+    ser = UserSchema()
     parse = ser.load(dict_from_server, many=True)
     print(parse)
     user_objs = parse.data
