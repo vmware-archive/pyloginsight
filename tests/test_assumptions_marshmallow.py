@@ -1,6 +1,5 @@
 
 
-
 """
 There are two styles of server-side collections:
 
@@ -28,6 +27,7 @@ import pytest
 import attrdict
 import warnings
 from collections import Mapping
+import weakref
 
 
 @pytest.fixture
@@ -46,6 +46,7 @@ def instance_from_server():
         'name': 'Keith',
         'email': 'keith@stones.com'
     }}
+
 
 @pytest.fixture
 def just_an_instance():
@@ -69,7 +70,6 @@ class BaseSchema(Schema):
         assert key is not None, "Envelope key undefined"
         return key
 
-
     @pre_load(pass_many=True)
     def unwrap_envelope(self, data, many):
         print("unwrap_envelope called with many=", many, "and data=", data)
@@ -83,7 +83,6 @@ class BaseSchema(Schema):
                 return x[1]
             print("unwrap_envelope return style, new")
             return list(map(_f, data[key].items()))
-            #r = data[key]
         else:
             print("unwrap_envelope return style, classic")
             r = data[key]
@@ -100,9 +99,15 @@ class BaseSchema(Schema):
         print("make_object called with", data)
         return self.__model__(**data)
 
+    def __new__(cls, *args, **kwargs):
+        print("__new__", cls, args, kwargs, dir(cls))
+        cls.__model__.__schema__ = weakref.ref(cls)
+        return super(BaseSchema, cls).__new__(cls, *args, **kwargs)
+
 
 class User(attrdict.AttrDict):
     pass
+
 
 class UserSchema(BaseSchema):
     __envelope__ = {
