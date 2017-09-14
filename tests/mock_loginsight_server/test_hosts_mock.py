@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-from tests.mock_loginsight_server.hosts import generate_hosts, sort_hosts
+from .hosts import generate_hosts, sort_hosts
 import random
 
 
