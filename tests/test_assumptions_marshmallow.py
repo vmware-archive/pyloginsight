@@ -22,7 +22,7 @@ http://marshmallow.readthedocs.io/en/latest/extending.html#example-enveloping-re
 
 """
 
-from marshmallow import Schema, SchemaOpts, fields, pre_load, post_dump, post_load
+from marshmallow import Schema, fields, pre_load, post_dump, post_load
 
 import pytest
 import attrdict
