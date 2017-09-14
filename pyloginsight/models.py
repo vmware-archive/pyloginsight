@@ -71,49 +71,28 @@ class Hosts(collections.Sequence, ServerAddressableObject):
     _single = Host
     _basekey = 'hosts'
 
-    def __iter__(self, reverse=False):
-        hosts_max = 100000
-        sources_max = 100000
-        hosts_from = 1
-        hosts_to = 200
-        sort_order = 'asc' if reverse else 'desc'
+    def __iter__(self, sort_order='desc'):
+        assert sort_order in ['desc', 'asc']
+        hosts = []
 
-        # Iterate over "hosts" and "sources" with upwards of 200 hosts per response.
-        # Exit when we've reached both the "hosts" and the "sources" maximums.
-        while hosts_from < hosts_max and hosts_from < sources_max:
+        for mode in [True, False]:
+            maximum = 100000
+            hosts_from = 1
+            hosts_to = 200
+            while hosts_from < maximum:
+                response = self._connection.post(self._baseurl, json={'loadMissingHosts': mode,
+                                                                      'from': hosts_from, 'to': hosts_to,
+                                                                      'sortOrder': sort_order})
+                hosts += response['hosts']
+                hosts_from += 200
+                hosts_to += 200
+                maximum = response['count']
 
-            # If our "hosts" counters exceeds the "hosts", return an empty list to avoid an unnecessary requests.
-            if hosts_from < hosts_max:
-                hosts_response = self._connection.post(self._baseurl, json={'loadMissingHosts': False,
-                                                                            'from': hosts_from, 'to': hosts_to,
-                                                                            'sortOrder': sort_order})
-            else:
-                hosts_response = {'hosts': []}
-
-            # The same for "sources".
-            if hosts_from < sources_max:
-                sources_response = self._connection.post(self._baseurl, json={'loadMissingHosts': True,
-                                                                              'from': hosts_from, 'to': hosts_to,
-                                                                              'sortOrder': sort_order})
-            else:
-                sources_response = {'hosts': []}
-
-            # Add "hosts" and "sources" lists and sort the results by the "lastReceived" value.
-            sorted_objects = sorted(hosts_response['hosts']+sources_response['hosts'],
-                                    key=lambda k: k['lastReceived'], reverse=reverse)
-
-            # Yield host objects in the sorted order.
-            for host in sorted_objects:
-                last_received_in_seconds = int(host['lastReceived']/1000)
-                date_format = '%Y-%m-%dT%H:%M:%SZ'
-                host['lastReceived'] = datetime.utcfromtimestamp(last_received_in_seconds).strftime(date_format)
-                yield Host().from_dict(connection=self._connection, url=self._baseurl, data=host)
-
-            # Increment to the next pages if necessary.
-            hosts_from += 200
-            hosts_to += 200
-            hosts_max = hosts_response['count']
-            sources_max = sources_response['count']
+        for host in sorted(hosts, key=lambda k: k['lastReceived'], reverse=True if sort_order == 'desc' else False):
+            last_received_in_seconds = int(host['lastReceived'] / 1000)
+            date_format = '%Y-%m-%dT%H:%M:%SZ'
+            host['lastReceived'] = datetime.utcfromtimestamp(last_received_in_seconds).strftime(date_format)
+            yield Host().from_dict(connection=self._connection, url=self._baseurl, data=host)
 
     def __len__(self):
         total = 0
@@ -126,7 +105,7 @@ class Hosts(collections.Sequence, ServerAddressableObject):
         return [host for host in self][item]
 
     def __reversed__(self):
-        return self.__iter__(reverse=True)
+        return self.__iter__(sort_order='asc')
 
     # The __contains__ method was not implemented because host objects on Log Insight do not have an ID. Although the
         # API does accept a searchTerm parameter that could be used to identify hosts by their FQDN or IP, the API will

@@ -2,27 +2,44 @@
 import requests_mock
 import json
 import logging
+import uuid
+import random
 
 from .utils import requiresauthentication
 
 mockserverlogger = logging.getLogger("LogInsightMockAdapter")
 
 
+def generate_hosts(quantity, host_type):
+    """ Given a quantity an a type, generate fake hosts values without a sortOrder. The sortOrder is added by the
+    sort_hosts function. """
+    assert type(quantity) == int
+    assert host_type in ['source', 'host']
+    for n in range(0, quantity, 1):
+        if host_type == 'host':
+            yield {'hostname': 'host-{}'.format(uuid.uuid4()),
+                   'lastReceived': random.randint(1154394061 * 1000, 1505330380 * 1000)}
+        elif host_type == 'source':
+            yield {'sourcePath': ".".join(map(str, (random.randint(0, 254) for _ in range(4)))),
+                   'lastReceived': random.randint(1154394061 * 1000, 1505330380 * 1000)}
+
+
+def sort_hosts(hosts, order):
+    """ Given a list of hosts, sort the list and add a sortOrder value. """
+    reverse = True if order == 'desc' else False
+    counter = 0
+    for host in sorted(hosts, key=lambda k: k['lastReceived'], reverse=reverse):
+        host['sortOrder'] = counter
+        counter += 1
+        yield host
+
+
 class MockedHoststMixin(requests_mock.Adapter):
 
     def __init__(self, **kwargs):
         super(MockedHoststMixin, self).__init__(**kwargs)
-
-        self.known_sources = [
-            {'lastReceived': 1505247698798, 'sourcePath': '192.168.0.66', 'sortOrder': '0'},
-        ]
-
-        self.known_hosts = [
-            {'hostname': 'host_b', 'lastReceived': 1505248138884, 'sortOrder': '0'},
-            {'hostname': 'host_a', 'lastReceived': 1505248128457, 'sortOrder': '1'}
-        ]
-
-        # Collection
+        self.known_sources = [_ for _ in generate_hosts(300, 'source')]
+        self.known_hosts = [_ for _ in generate_hosts(300, 'host')]
         self.register_uri('POST', '/api/v1/hosts', status_code=200, text=self.callback_hosts)
 
     @requiresauthentication
@@ -60,12 +77,15 @@ class MockedHoststMixin(requests_mock.Adapter):
             return json.dumps(errors)
 
         context.status_code = 200
+
         if load_missing_hosts:
-            return json.dumps({'count': len(self.known_sources), 'from': hosts_from, 'to': hosts_to,
-                               'hosts': self.known_sources[hosts_from-1:hosts_to-1]}
+            payload = [_ for _ in sort_hosts(self.known_sources, order=hosts_sort_order)]
+            return json.dumps({'count': len(payload), 'from': hosts_from, 'to': hosts_to,
+                               'hosts': payload[hosts_from - 1:hosts_to]}
                               )
 
         if not load_missing_hosts:
-            return json.dumps({'count': len(self.known_hosts), 'from': hosts_from, 'to': hosts_to,
-                               'hosts': self.known_hosts[hosts_from-1:hosts_to-1]}
+            payload = [_ for _ in sort_hosts(self.known_hosts, order=hosts_sort_order)]
+            return json.dumps({'count': len(payload), 'from': hosts_from, 'to': hosts_to,
+                               'hosts': payload[hosts_from-1:hosts_to]}
                               )
