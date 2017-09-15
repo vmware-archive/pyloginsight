@@ -202,6 +202,9 @@ class Connection(object):
         except (TypeError, KeyError):
             error_message = None
 
+        if r.status_code == 418:
+            raise NotImplementedError("{} {}: {}".format(method, url, payload))
+
         if error_message:
             raise ValueError(r.status_code, error_message)
         else:

@@ -42,7 +42,6 @@ def test_iterate_by_key(connection, collection_class):
     for key in collection:
         count += 1
         assert isinstance(key, str) or isinstance(key, int)
-        assert key in collection
 
     assert count == len(collection)
 
@@ -57,7 +56,6 @@ def test_iterate_by_items(connection, collection_class):
         count += 1
         assert isinstance(key, str) or isinstance(key, int)
         assert isinstance(value, Single)
-        assert key in collection
 
     assert count == len(collection)
 
@@ -90,12 +88,11 @@ def test_get_nonexistant(connection, collection_class):
         _ = collection["000000000-000-0000-0000-000000000000"]
 
 
-def test_nonexistant_is_not_in_collection(connection, collection_class):
+def test_keys_are_in_collection(connection, collection_class):
     """Can use `item in collection` to determine collection membership."""
     collection = collection_class(connection)
 
-    # Be certain that the fake key we're trying to fetch really doesn't exist.
-    for key, value in collection.items():
+    for key in collection:
+        assert isinstance(key, str) or isinstance(key, int)
+        assert key in collection
         assert key != "000000000-000-0000-0000-000000000000"
-
-    assert "000000000-000-0000-0000-000000000000" not in collection

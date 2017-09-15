@@ -50,7 +50,6 @@ class MockedDatasetsMixin(requests_mock.Adapter):
         self.register_uri('POST', uuid_url_matcher('datasets'), status_code=201, text=self.Raise418)
         self.register_uri('PATCH', uuid_url_matcher('datasets'), status_code=201, text=self.Raise418)
 
-
     @requiresauthentication
     def __list(self, request, context, session_id, user_id):
         return json.dumps({'dataSets': list(self.__known.values())})

@@ -16,8 +16,8 @@ mockserverlogger = logging.getLogger("LogInsightMockAdapter")
 
 class LogInsightMockAdapter(MockedExampleObjectMixin, MockedDatasetsMixin, MockedBootstrapMixin, MockedVersionMixin, MockedLicensesMixin, MockedSessionsMixin, MockedAuthProvidersMixin, requests_mock.Adapter):
     def Raise418(self, request, context):
-        context.status_code = 418
-        return "TEAPOT NOT IMPLEMENTED"
+        context.status_code = 418  # Teapot
+        return "Verb/Route not yet implemented in LoginsightMockAdapter"
 
 
 class MockedConnection(Connection):

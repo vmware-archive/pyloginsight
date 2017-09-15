@@ -3,7 +3,7 @@
 
 import logging
 import collections
-from .exceptions import ResourceNotFound, Cancel
+from .exceptions import ResourceNotFound, Cancel, InefficientGetterUsesIteration
 import abc
 import warnings
 from marshmallow import Schema, pre_load, post_dump, post_load
@@ -22,6 +22,27 @@ def bind_to_model(cls):
     else:
         logger.error("Binding schema {} to model skipped, no model reference.".format(cls))
     return cls
+
+
+class DirectlyAddressableContainerMapping(object):
+    """
+    A mapping container which exposes discrete mapping objects at their own URLs,
+    in the form /api/v1/collection/uuid.
+    Avoids InefficientGetterUsesIteration
+    """
+    def __contains__(self, item):
+        try:
+            self._connection.get("{0}/{1}".format(self._baseurl, item))
+        except ResourceNotFound:
+            return False
+        return True
+
+    def __getitem__(self, item):
+        """
+        Retrieve details for a single item from the server. Could raise KeyError.
+        """
+        url = "{0}/{1}".format(self._baseurl, item)
+        return self._single.from_server(self._connection, url)
 
 
 class ServerDictMixin(collections.MutableMapping):
@@ -45,7 +66,7 @@ class ServerDictMixin(collections.MutableMapping):
         """
         Retrieve details for a single item from the server. Could raise KeyError.
         """
-
+        warnings.warn(str(self.__class__), InefficientGetterUsesIteration)
         for k, v in self.items():
             if k == item:
                 return v
@@ -199,6 +220,7 @@ class ServerAddressableObject(ABC):
 
     def asdict(self):
         """GET against the collection's base url, producing a collection-specific summary. Used as the basis for all getters/iterators."""
+        logger.debug("ServerAddressableObject -> {} GET {}".format(self.__class__, self._baseurl))
         return self._connection.get(self._baseurl)
 
     def __call__(self):

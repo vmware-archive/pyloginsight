@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from requests import HTTPError
+import warnings
 
 
 class ServerError(BaseException):
@@ -33,3 +34,8 @@ class NotBootstrapped(ServerError):
 
 class AlreadyBootstrapped(ServerError):
     """The server has already been bootstrapped, you can't bootstrap it again."""
+
+
+class InefficientGetterUsesIteration(UserWarning):
+    """Iterating over and instantiating all items in collection to retrieve a single item."""
+    pass

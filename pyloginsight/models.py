@@ -20,7 +20,7 @@
 from distutils.version import StrictVersion
 import logging
 import collections
-from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
+from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin, DirectlyAddressableContainerMapping
 from .abstracts import ServerProperty, RemoteObjectProxy, ObjectSchema, EnvelopeObjectSchema, bind_to_model
 import json
 import attrdict
@@ -133,13 +133,13 @@ class DatasetSchema(EnvelopeObjectSchema):
     #    return [x['id'] for x in self._iterable]
 
 
-class Datasets(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
+class Datasets(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/datasets"
     _single = Dataset
     _schema = DatasetSchema
     _basekey = "dataSets"
 
-    #_fetchone = True
+    _fetchone = True
 
 _Role = collections.namedtuple('Role', 'name, description, datasets, capabilities, users')
 
@@ -252,12 +252,12 @@ class UserSchema(EnvelopeObjectSchema):
     typeEnum = fields.Str()
 
 
-class Users(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
+class Users(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/users"
     _single = User
     _schema = UserSchema
 
-    def __getitem__(self, item):
+    def asdf__getitem__(self, item):
         """
         Retrieve details for a single item from the server. Could raise KeyError.
         """

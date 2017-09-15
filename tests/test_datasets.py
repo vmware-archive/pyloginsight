@@ -66,17 +66,6 @@ def test_iterate_all_datasets_by_key(connection):
     assert count == len(connection.server.datasets)
 
 
-def test_iterate_over_datasets_(connection):
-    d = Datasets(connection)
-
-    count = 0
-    for key in d:
-        count += 1
-        assert isinstance(key, str)
-
-    assert count == len(d)
-
-
 def test_collection_callable(connection):
     d = Datasets(connection)
 
