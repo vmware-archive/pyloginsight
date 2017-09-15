@@ -14,7 +14,7 @@ import socket
 import urllib3
 import warnings
 
-ROOTLOGGER = False
+ROOTLOGGER = True
 
 if ROOTLOGGER:
     logger = logging.getLogger()
@@ -142,6 +142,7 @@ def ensure_server_bootstrapped_and_licensed(connection, licensekey):
     """
     :param connection: a pyloginsight.Connection instance
     """
+    return True
 
     # Only need to check once
     if connection._apiroot in ensure_server_bootstrapped_and_licensed.cache:

@@ -21,7 +21,7 @@ from distutils.version import StrictVersion
 import logging
 import collections
 from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
-from .abstracts import ServerProperty, RemoteObjectProxy, BaseSchema
+from .abstracts import ServerProperty, RemoteObjectProxy, ObjectSchema, EnvelopeObjectSchema, bind_to_model
 import json
 import attrdict
 from marshmallow import Schema, fields
@@ -32,28 +32,32 @@ logger = logging.getLogger(__name__)
 
 class LicenseKey(RemoteObjectProxy, attrdict.AttrDict):
     """A single license key for Log Insight."""
-    class MarshmallowSchema(Schema):
-        id = fields.Str()
-        error = fields.Str(load_only=True)
-        status = fields.Str(load_only=True)
-        configuration = fields.Str(load_only=True)
-        expiration = fields.Str(load_only=True)
-        licenseKey = fields.Str()
-        infinite = fields.Str(load_only=True)
-        count = fields.Integer(load_only=True)
-        typeEnum = fields.Str(load_only=True)
+
+
+@bind_to_model
+class LicenseKeySchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'single': 'licenseKey',
+        'many': 'licenses',
+        'append': lambda x: {'key': x['licenseKey']}  # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
+    }
+    __model__ = LicenseKey
+    id = fields.Str()
+    error = fields.Str(load_only=True)
+    status = fields.Str(load_only=True)
+    configuration = fields.Str(load_only=True)
+    expiration = fields.Raw(load_only=True)
+    licenseKey = fields.Str()
+    infinite = fields.Raw(load_only=True)
+    count = fields.Integer(load_only=True)
+    typeEnum = fields.Str(load_only=True)
 
 
 class LicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/licenses"
     _single = LicenseKey
+    _schema = LicenseKeySchema
     _basekey = "licenses"
-
-    def _createspec(self, value):
-        # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
-        if isinstance(value, LicenseKey):
-            value = value['licenseKey']
-        return {'key': value}
 
 
 class Version(StrictVersion, RemoteObjectProxy):
@@ -83,97 +87,59 @@ class Version(StrictVersion, RemoteObjectProxy):
         """
         return int(self.build_string)
 
-    class MarshmallowSchema(Schema):
-        version = fields.Str()
-        releaseName = fields.Str(attribute="release_name")
 
-    __schema__ = MarshmallowSchema
+@bind_to_model
+class VersionSchema(ObjectSchema):
+    __model__ = Version
+    version = fields.Str()
+    releaseName = fields.Str(attribute="release_name")
 
 
-class Dataset(ServerAddressableObject):
+class Dataset(RemoteObjectProxy, attrdict.AttrDict):
     """
     An object, canonically at /datasets/UUID, which defines a set of rules constraining queries.
 
-    Can self-update on property change, if it has a connection and existing UUID.
+    Can sent itself back to the server, if it has a connection and existing UUID.
     Can be appended to a Datasets collection.
     Can be retrieved from a Datasets collection.
-    """
-
-    id = None
-    name = ""
-    description = ""
-    type = None
-    constraints = None
-
-    def __init__(self, name, description="", id=None, type="OR", constraints=None):
-        self.id = id
-        self.name = name
-        self.description = description
-        self.type = type
-        self.constraints = Dataset.Constraints(constraints) if constraints else Dataset.Constraints()
 
     class Constraints(ServerListMixin):
         pass
 
         class Constraint(ServerAddressableObject):
+
             name = None
             operator = None
             value = None
             fieldType = "STRING"
             hidden = False
+    """
 
 
-class Datasets(collections.MutableMapping):
+@bind_to_model
+class DatasetSchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'single': 'dataSet',
+        'many': 'dataSets',
+    }
+    __model__ = Dataset
+    id = fields.Str()
+    name = fields.Str()
+    description = fields.Str()
+    type = fields.Str()
+    constraints = fields.List(fields.Dict())
 
-    def __init__(self, connection):
-        self._connection = connection
+    #def keys(self):
+    #    return [x['id'] for x in self._iterable]
 
-    @property
-    def _rootobject(self):
-        return {dataset['id']: dataset for dataset in self._connection.get('/datasets')['dataSets']}
 
-    def __delitem__(self, key):
-        response = self._connection.delete('/datasets/{i}'.format(i=key))
-        if response.ok:
-            pass
-        else:
-            if response.status_code == 400:
-                raise KeyError('The specified data set does not exist.')
-            else:
-                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+class Datasets(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
+    _baseurl = "/datasets"
+    _single = Dataset
+    _schema = DatasetSchema
+    _basekey = "dataSets"
 
-    def __getitem__(self, key):
-        return self._rootobject[key]
-
-    def __setitem__(self, key, value):
-        raise NotImplementedError
-
-    def __len__(self):
-        return len(self._rootobject)
-
-    def __iter__(self):
-        return iter(self._rootobject)
-
-    def append(self, name, description, field, value):
-
-        if type(name) == str and type(description) == str and type(field) == str and type(value) == str:
-            pass
-        else:
-            raise TypeError('The name, description, field, and value should be string types.')
-
-        constraints = [{'name': field, 'operator': 'CONTAINS', 'value': value, 'fieldType': 'STRING'}]
-        data = json.dumps({'name': name, 'description': description, 'constraints': constraints})
-        response = self._connection.post('/datasets', data=data)
-
-        if response.ok:
-            return None
-
-        else:
-            if response.status_code == 400:
-                raise TypeError(response.text)
-            else:
-                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
-
+    #_fetchone = True
 
 _Role = collections.namedtuple('Role', 'name, description, datasets, capabilities, users')
 
@@ -262,38 +228,41 @@ class Roles(collections.MutableMapping):
 
 
 class User(RemoteObjectProxy, attrdict.AttrDict):
-    class MarshmallowSchema(BaseSchema):
-        __envelope__ = {
-            'single': 'user',
-            'many': 'users',
-        }
+    pass
 
-        id = fields.Str()
-        username = fields.Str()
-        password = fields.Str(dump_only=True)
-        email = fields.Email(missing="", required=True)
-        type = fields.Str()
-        apiId = fields.Str()
-        groupIds = fields.List(fields.String())
-        capabilities = fields.List(fields.String())
-        userCapabilities = fields.List(fields.String())
-        userDataSets = fields.List(fields.String())
-        typeEnum = fields.Str()
-    __schema__ = MarshmallowSchema
+
+@bind_to_model
+class UserSchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'single': 'user',
+        'many': 'users',
+        'append': lambda x: x['user']
+    }
+    __model__ = User
+    id = fields.Str()
+    username = fields.Str()
+    password = fields.Str(dump_only=True)
+    email = fields.Email(missing="", required=False)
+    type = fields.Str()
+    apiId = fields.Str()
+    groupIds = fields.List(fields.String())
+    capabilities = fields.List(fields.String())
+    userCapabilities = fields.List(fields.String())
+    userDataSets = fields.List(fields.String())
+    typeEnum = fields.Str()
 
 
 class Users(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/users"
-    _basekey = "users"
     _single = User
-    _fetchone = True
+    _schema = UserSchema
 
-    def keys(self):
-        return [x['id'] for x in self._iterable]
-
-    def _createspec(self, instance):
-        # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
-        return instance
+    def __getitem__(self, item):
+        """
+        Retrieve details for a single item from the server. Could raise KeyError.
+        """
+        url = "{0}/{1}".format(self._baseurl, item)
+        return self._single.from_server(self._connection, url)
 
 
 class Server(object):

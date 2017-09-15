@@ -6,11 +6,22 @@ import collections
 from .exceptions import ResourceNotFound, Cancel
 import abc
 import warnings
-from marshmallow import Schema, pre_load, post_dump
-
+from marshmallow import Schema, pre_load, post_dump, post_load
+from collections import Mapping
+import weakref
 
 logger = logging.getLogger(__name__)
 ABC = abc.ABCMeta('ABC', (object,), {})
+
+
+def bind_to_model(cls):
+    import weakref
+    if cls.__model__ is not None:
+        logger.error("Binding schema {} to model {}".format(cls, cls.__model__))
+        cls.__model__.__schema__ = weakref.proxy(cls)
+    else:
+        logger.error("Binding schema {} to model skipped, no model reference.".format(cls))
+    return cls
 
 
 class ServerDictMixin(collections.MutableMapping):
@@ -34,59 +45,52 @@ class ServerDictMixin(collections.MutableMapping):
         """
         Retrieve details for a single item from the server. Could raise KeyError.
         """
-        url = "{0}/{1}".format(self._baseurl, item)
 
-        if hasattr(self, "_fetchone"):
-            return self._single.from_server(self._connection, url)
-
-        return self._single.from_dict(self._connection, url, self._iterable[item])
+        for k, v in self.items():
+            if k == item:
+                return v
+        raise KeyError
 
     def items(self):
         """
         Retrieve full objects directly from the summary view. May be stale, but faster to iterate.
         This is an alternate to using d[k], which invokes __getitem__ to make an HTTP request.
         """
-        d = self._iterable
-        try:
-            rewrap = self._single.__schema__.__envelope__['single']
-        except AttributeError:
-            rewrap = None
 
-        if type(d) is dict:
-            for k, v in d.items():
-                item = v['id']
-                url = "{0}/{1}".format(self._baseurl, item)
-                yield (k, self._single.from_dict(self._connection, url, {rewrap: v} if rewrap else v))
+        if not hasattr(self, '_schema'):
+            raise SyntaxWarning("Missing __model__ or @bind_to_model on {}".format(self.__class__))
+        ser = self._schema()
+        parse = ser.load(self._iterable, many=True, partial=True)
 
-        else:
-            for v in d:
-                item = v['id']
-                url = "{0}/{1}".format(self._baseurl, item)
-                yield (item, self._single.from_dict(self._connection, url, {rewrap: v} if rewrap else v))
+        if parse.errors:
+            for e in parse.errors:
+                logger.warning(e)
+        for item in parse.data:
+            item['_connection'] = self._connection
+            item['_url'] = "{0}/{1}".format(self._baseurl, item['id'])
+            yield (item['id'], item)
 
     def keys(self):
-        return self._iterable.keys()
+        ser = self._schema()
+        parse = ser.load(self._iterable, many=True, partial=True)
+
+        if parse.errors:
+            for e in parse.errors:
+                logger.warning(e)
+        return [item['id'] for item in parse.data]
 
     def __iter__(self):
         for key in self.keys():
             yield key
 
     def __len__(self):
-        return len(self._iterable)
+        return len(self._iterable[self._schema.__envelope__['many']])
 
     def __setitem__(self, key, value):
         raise NotImplementedError
 
     @property
     def _iterable(self):
-        """
-        How to navigate from the top-level container summary to a list/dict of child items.
-        Default implementation returns the top-level dict or dict[_basekey; override in child class.
-        """
-
-        if hasattr(self, "_basekey"):
-            return self.asdict().get(getattr(self, '_basekey'))
-
         return self.asdict()
 
 
@@ -104,12 +108,12 @@ class ServerListMixin(collections.MutableSequence):
         self.append(value)
 
     def __len__(self):
-        return self.count()
+        return len(self._iterable)
 
-    def insert(self):
+    def insert(self, index, value):
         raise NotImplementedError
 
-    def remove(self):
+    def remove(self, index):
         raise NotImplementedError
 
     def __iter__(self):
@@ -138,24 +142,43 @@ class AppendableServerDictMixin(object):
         If the server response includes the new UUID, return it.
         A subsequent request to keys/iter will include the new item.
 
-        :param value: any python object which will be passed to and marshaled by :func:self._createspec:
+        :param value: any python object which will be marshaled by self._schema().dump(value):
         :return uuid: url-fragment identifier for the newly-created server-side object
         """
-        resp = self._connection.post(self._baseurl, json=self._createspec(value))
 
+        ser = self._schema()
+
+        transmit = ser.dump(value, many=False)
+        if transmit.errors:
+            logger.warning("Error serializing a {}: {}".format(self.__class__, transmit.errors))
+
+        body = transmit.data
+
+        try:
+            body = ser.__envelope__['append'](body)
+        except KeyError:
+            pass
+        resp = self._connection.post(self._baseurl, json=body)
+
+        logger.debug("Server responded with new object {}/{}".format(self._baseurl, resp))
         # new UUID for this object, probably accessible at _baseurl/{id}
-        o = self._single.from_dict(self._connection, url=None, data=resp)
 
-        logger.debug("Created new object {}/{}".format(self._baseurl, o))
-        url = "{}/{}".format(self._baseurl, o['id'])
+        # TODO pass marshmallow context
 
-        # TypeError: 'X' does not allow attribute creation.
+        # Some interfaces produce an 'id' key on the root object
+        if 'id' in resp:
+            return resp['id']
 
-        object.__setattr__(o, "__url", url)
-        return o['id']
+        # Some interfaces produce an enveloped object
+        parse = ser.load(resp, many=False, partial=True)
+        if parse.errors:
+            logger.warning("Error deserializing to a {}: {}".format(self.__class__, parse.errors))
+        item = parse.data
 
-    def _createspec(self, value):
-        return value._serialize()
+        if 'id' in item:
+            return item['id']
+        logger.warning("Created new object via {} successfully, but no ID was returned: {}".format(self._baseurl, resp))
+        return None
 
 
 class ServerAddressableObject(ABC):
@@ -217,23 +240,21 @@ class RemoteObjectProxy(object):
         return connection.post(baseurl, json=self._serialize())
 
     @classmethod
-    def from_dict(cls, connection, url, data):
-        body, errors = cls.MarshmallowSchema().load(data)
+    def from_dict(cls, connection, url, data, many=None):
+        schema = cls.__schema__()
+
+        schema.context.update({"url": url, "connection": connection})
+        body, errors = schema.load(data, many=False)
         for e in errors:
             logger.warning(e)
-        self = cls(**body)
-
-        # Can't access directly, as validator borrows the setattr/getattribute interface.
-        object.__setattr__(self, "__connection", connection)
-        object.__setattr__(self, "__url", url)
-        return self
+        return body
 
     @classmethod
     def from_server(cls, connection, url):
-        body = connection.get(url)
-        if hasattr(cls, '_singlekey'):
-            body = body[cls._singlekey]
-
+        try:
+            body = connection.get(url)
+        except ResourceNotFound:
+            raise KeyError(url)
         self = cls.from_dict(connection, url, body)
         return self
 
@@ -243,7 +264,7 @@ class RemoteObjectProxy(object):
         Called from to_server, and from collections to create new server-side entities.
         May or may not already have an `id` or __url.
         """
-        data, errors = self.MarshmallowSchema().dump(self)
+        data, errors = self.__schema__().dump(self)
         for e in errors:
             logger.warning(e)
 
@@ -337,23 +358,45 @@ class ServerProperty(object):
         raise NotImplementedError
 
 
-class BaseSchema(Schema):
+class ObjectSchema(Schema):
+    @post_load
+    def make_object(self, data):
+        logger.debug("Inflating a new object {}: {}".format(self.__model__, data))
+        logger.debug("Inflating a new object with context: {}".format(self.context))
+        o = self.__model__(**data)
+
+        for k, v in self.context.items():
+            object.__setattr__(o, "__" + k, v)
+        return o
+
+class EnvelopeObjectSchema(ObjectSchema):
     # Custom options
     __envelope__ = {
         'single': None,
         'many': None
     }
+    __model__ = None
 
     def get_envelope_key(self, many):
-        """Helper to get the envelope key."""
+        """Helper to get the envelope key. None indicates no envelope."""
         key = self.__envelope__['many'] if many else self.__envelope__['single']
-        assert key is not None, "Envelope key undefined"
+        if key is None:
+            raise SyntaxWarning("Schema {} has __envelope__ containing None".format(self.__class__))
         return key
 
     @pre_load(pass_many=True)
     def unwrap_envelope(self, data, many):
         key = self.get_envelope_key(many)
-        return data[key]
+        if many and key and isinstance(data[key], Mapping):
+            # List-ify the collection, moving the key into the 'id' field
+            def _f(x):
+                if 'id' in x[1] and x[1]['id'] != x[0]:
+                    warnings.warn("Object already had an 'id' property that differs from the key: {}".format(x))
+                x[1]['id'] = x[0]
+                return x[1]
+            data[key] = list(map(_f, data[key].items()))
+
+        return data[key] if key else data
 
     @post_dump(pass_many=True)
     def wrap_with_envelope(self, data, many):

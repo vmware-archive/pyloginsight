@@ -6,11 +6,11 @@ import json
 import datetime
 
 from mock_loginsight_server import MockedConnection
-from pyloginsight.abstracts import RemoteObjectProxy
+from pyloginsight.abstracts import RemoteObjectProxy, ObjectSchema, bind_to_model
 
 import attrdict
 
-from marshmallow import Schema, fields
+from marshmallow import fields
 
 
 pytestmark = pytest.mark.exampleapi  # Cannot succeed against a real server
@@ -49,12 +49,21 @@ class ExampleObjectAttribs(RemoteObjectProxy):
 
 
 class ExampleObjectMarshmallow(RemoteObjectProxy, attrdict.AttrDict):
-    class MarshmallowSchema(Schema):
-        attribute = fields.Str()
-        id = fields.Str()
-        datetime = fields.DateTime()
-        timedelta = fields.TimeDelta(precision='microseconds')
-        defaultseven = fields.Integer(missing=7)
+    pass
+
+
+@bind_to_model
+class MarshmallowSchema(ObjectSchema):
+    __envelope__ = {
+        'single': None,
+        'many': None,
+    }
+    __model__ = ExampleObjectMarshmallow
+    attribute = fields.Str()
+    id = fields.Str()
+    datetime = fields.DateTime()
+    timedelta = fields.TimeDelta(precision='microseconds')
+    defaultseven = fields.Integer(missing=7)
 
 
 # Can add ExampleObjectJson, ExampleObjectAttribs to the params list to exercise more tests.
@@ -95,6 +104,7 @@ def test_object_serializes_to_json(connection, ExampleObject):
     print(original_object)
     print(original_object._serialize())
     dict_representation = json.loads(json.dumps(original_object._serialize()))
+    print(dict_representation)
     assert dict_representation['attribute'] == 'value'
 
 

@@ -7,14 +7,17 @@ from .version import MockedVersionMixin
 from .exampleobject import MockedExampleObjectMixin
 from .auth_providers import MockedAuthProvidersMixin
 from .bootstrap import MockedBootstrapMixin
+from .datasets_mock import MockedDatasetsMixin
 
 from pyloginsight.connection import Connection, Credentials
 
 mockserverlogger = logging.getLogger("LogInsightMockAdapter")
 
 
-class LogInsightMockAdapter(MockedExampleObjectMixin, MockedBootstrapMixin, MockedVersionMixin, MockedLicensesMixin, MockedSessionsMixin, MockedAuthProvidersMixin, requests_mock.Adapter):
-    pass
+class LogInsightMockAdapter(MockedExampleObjectMixin, MockedDatasetsMixin, MockedBootstrapMixin, MockedVersionMixin, MockedLicensesMixin, MockedSessionsMixin, MockedAuthProvidersMixin, requests_mock.Adapter):
+    def Raise418(self, request, context):
+        context.status_code = 418
+        return "TEAPOT NOT IMPLEMENTED"
 
 
 class MockedConnection(Connection):

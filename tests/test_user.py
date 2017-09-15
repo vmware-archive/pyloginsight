@@ -53,11 +53,12 @@ def test_iterate_over(connection):
     counter = 0
     # retrieve every item
     for k, v in d.items():
+        print("Retrieved item", k, ",", v)
         assert k == v.id
         assert hasattr(v, "username")
         counter += 1
     assert counter > 0  # There should be at least one existing user (us)on the server
-    assert counter == len(d)  # counting and length agree
+    assert counter == len(d) == len(d.keys())  # counting and length agree
 
 
 @pytest.mark.sideeffects

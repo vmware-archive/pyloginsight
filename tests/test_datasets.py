@@ -5,9 +5,9 @@ from __future__ import print_function
 
 import pytest
 import requests_mock
+from pyloginsight.models import Dataset, Datasets
+import uuid
 
-
-pytestmark = pytest.mark.skip("Broken mock")
 
 GET_DATASETS_200 = '{"dataSets":[{"id":"7c677664-e373-456d-ba85-6047dfc84452","name":"vobd","description":"Events from the vobd daemon on ESXi","type":"OR","constraints":[{"name":"appname","operator":"CONTAINS","value":"vobd","fieldType":"STRING","hidden":false}]}]}'
 POST_DATASETS_400 = '{"errorMessage":"Some fields have incorrect values","errorCode":"FIELD_ERROR","errorDetails":{"name":[{"errorCode":"com.vmware.loginsight.api.errors.field_value_should_be_one_of","errorMessage":"Value should be one of (appname,hostname,procid,__li_source_path,vc_details,vc_event_type,vc_username,vc_vm_name)","errorParams":["appname","hostname","procid","__li_source_path","vc_details","vc_event_type","vc_username","vc_vm_name"]}]}}'
@@ -26,39 +26,96 @@ adapter.register_uri('DELETE', 'https://mockserver:9543/api/v1/datasets/00000000
 adapter.register_uri('DELETE', 'https://mockserver:9543/api/v1/datasets/raspberry', text=DELETE_DATASETS_400_2, status_code=400)
 
 
-def test_delitem(server):
-    # For some reason when performing local tests this operation returns a string instead of none.
-    # When testing interactively, I get the expected response.
-    server.datasets.pop('7c677664-e373-456d-ba85-6047dfc84452', None)
+def test_get_nonexistant(connection):
+
+    # the fake key we're trying to fetch really doesn't exist
+    for guid, license in connection.server.datasets.items():
+        assert guid != "000000000-000-0000-0000-000000000000"
 
     with pytest.raises(KeyError):
-        del server.datasets['00000000-0000-0000-0000-000000000050']
-
-    with pytest.raises(KeyError):
-        del server.datasets['raspberry']
+        _ = connection.server.datasets["000000000-000-0000-0000-000000000000"]
 
 
-def test_getitem(server):
-    assert server.datasets['7c677664-e373-456d-ba85-6047dfc84452']['name'] == 'vobd'
-    assert type(server.datasets['7c677664-e373-456d-ba85-6047dfc84452']['constraints']) == list
-
-
-def test_setitem(server):
+def test_setitem(connection):
+    datasets = connection.server.datasets
     with pytest.raises(NotImplementedError):
-        server.datasets['7c677664-e373-456d-ba85-6047dfc84452'] = 'raspberry'
+        datasets['7c677664-e373-456d-ba85-6047dfc84452'] = 'raspberry'
 
 
-def test_len(server):
-    assert len(server.datasets) == 1
+def test_remove_nonexistant(connection):
+
+    previous_quantity = len(connection.server.datasets)
+
+    # the fake key we're trying to delete really doesn't exist
+    for guid, item in connection.server.datasets.items():
+        assert isinstance(guid, str)
+        assert isinstance(item, Dataset)
+        assert guid != "000000000-000-0000-0000-000000000000"
+
+    with pytest.raises(KeyError):
+        del connection.server.datasets["000000000-000-0000-0000-000000000000"]
+    assert len(connection.server.datasets) == previous_quantity  # no change to number of license keys on server
 
 
-def test_iter(server):
-    assert type([v for v in server.datasets.values()][0]) == dict
-    assert len([d for d in server.datasets]) == 1
+def test_iterate_all_datasets_by_key(connection):
+    count = 0
+    for dataset_key in connection.server.datasets:
+        count += 1
+        print(dataset_key)
+
+    assert count == len(connection.server.datasets)
 
 
-def test_append(server):
-    assert server.datasets.append(name='mydataset', description='mydescription', field='hostname', value='esx*') is None
+def test_iterate_over_datasets_(connection):
+    d = Datasets(connection)
 
-    with pytest.raises(TypeError):
-        server.datasets.append(name='mydataset', description='mydescription', field=1, value='error')
+    count = 0
+    for key in d:
+        count += 1
+        assert isinstance(key, str)
+
+    assert count == len(d)
+
+
+def test_collection_callable(connection):
+    d = Datasets(connection)
+
+    called = d()
+
+    print("type(d)", type(d), d)
+    print("type(called)", type(called), called)
+
+
+def test_iterate_all_datasets_on_server(connection):
+    count = 0
+    for dataset_key, dataset in connection.server.datasets.items():
+        count += 1
+        print(dataset_key)
+        assert isinstance(dataset, Dataset)
+        print(dataset)
+
+    assert count == len(connection.server.datasets)
+
+
+def test_append_and_delete(connection):
+    name = "testdataset-" + str(uuid.uuid4())
+
+    original_quantity = len(connection.server.datasets)
+
+    dataset = Dataset(name=name, description='mydescription', field='hostname', value='esx*', constraints=[{'value': 'vobd', 'hidden': False, 'name': '__li_source_path', 'fieldType': 'STRING', 'operator': 'CONTAINS'}])
+    assert 'id' not in dataset
+
+    new_object_guid = connection.server.datasets.append(dataset)
+    print("new_object_guid", new_object_guid)
+
+    assert '-' in new_object_guid
+
+    refetch_object = connection.server.datasets[new_object_guid]
+    print("refetch_object", refetch_object)
+
+    assert len(connection.server.datasets) == original_quantity + 1
+
+    del connection.server.datasets[new_object_guid]
+
+    # Back to starting point
+    assert len(connection.server.datasets) == original_quantity
