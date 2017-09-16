@@ -4,26 +4,8 @@ from __future__ import print_function
 
 
 import pytest
-import requests_mock
 from pyloginsight.models import Dataset, Datasets
 import uuid
-
-
-GET_DATASETS_200 = '{"dataSets":[{"id":"7c677664-e373-456d-ba85-6047dfc84452","name":"vobd","description":"Events from the vobd daemon on ESXi","type":"OR","constraints":[{"name":"appname","operator":"CONTAINS","value":"vobd","fieldType":"STRING","hidden":false}]}]}'
-POST_DATASETS_400 = '{"errorMessage":"Some fields have incorrect values","errorCode":"FIELD_ERROR","errorDetails":{"name":[{"errorCode":"com.vmware.loginsight.api.errors.field_value_should_be_one_of","errorMessage":"Value should be one of (appname,hostname,procid,__li_source_path,vc_details,vc_event_type,vc_username,vc_vm_name)","errorParams":["appname","hostname","procid","__li_source_path","vc_details","vc_event_type","vc_username","vc_vm_name"]}]}}'
-POST_DATASETS_201 = '{"dataSet":{"id":"084ba074-53e7-434f-b6bb-253d1695c084","name":"test2","description":"test2","type":"OR","constraints":[{"name":"hostname","operator":"CONTAINS","value":"esx*","fieldType":"STRING","hidden":false}]}}'
-DELETE_DATASETS_200 = ''
-DELETE_DATASETS_400 = '{"errorMessage":"Specified data set does not exist.","errorCode":"RBAC_DATASETS_ERROR","errorDetails":{"errorCode":"com.vmware.loginsight.api.errors.rbac.dataset_does_not_exist"}}'
-DELETE_DATASETS_400_2 = '{"errorMessage":"Bad request received (Cannot parse parameter dataSetId as UUID: Invalid UUID string: raspberry): DELETE /api/v1/datasets/raspberry"}'
-
-
-adapter = requests_mock.Adapter()
-adapter.register_uri('GET', 'https://mockserver:9543/api/v1/datasets', text=GET_DATASETS_200, status_code=200)
-adapter.register_uri('POST', 'https://mockserver:9543/api/v1/datasets', text=POST_DATASETS_400, status_code=400)
-adapter.register_uri('POST', 'https://mockserver:9543/api/v1/datasets', text=POST_DATASETS_201, status_code=201)
-adapter.register_uri('DELETE', 'https://mockserver:9543/api/v1/datasets/7c677664-e373-456d-ba85-6047dfc84452', text=DELETE_DATASETS_200, status_code=200)
-adapter.register_uri('DELETE', 'https://mockserver:9543/api/v1/datasets/00000000-0000-0000-0000-000000000050', text=DELETE_DATASETS_400, status_code=400)
-adapter.register_uri('DELETE', 'https://mockserver:9543/api/v1/datasets/raspberry', text=DELETE_DATASETS_400_2, status_code=400)
 
 
 def test_get_nonexistant(connection):

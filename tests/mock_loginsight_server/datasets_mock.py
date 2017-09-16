@@ -4,7 +4,7 @@ from __future__ import print_function
 import requests_mock
 import json
 import logging
-from .utils import RandomDict, requiresauthentication, trailing_guid_pattern, uuid_url_matcher, guid
+from .utils import RandomDict, requiresauthentication, uuid_url_matcher, guid
 
 logger = logging.getLogger("LogInsightMockAdapter").getChild(__name__)
 
@@ -46,7 +46,7 @@ class MockedDatasetsMixin(requests_mock.Adapter):
 
         # Singular
         self.register_uri('DELETE', uuid_url_matcher('datasets'), status_code=200, text=self.__remove)
-        self.register_uri('GET', uuid_url_matcher('datasets'), status_code=200, text=self.Raise418)
+        self.register_uri('GET', uuid_url_matcher('datasets'), status_code=200, text=self.__get)
         self.register_uri('POST', uuid_url_matcher('datasets'), status_code=201, text=self.Raise418)
         self.register_uri('PATCH', uuid_url_matcher('datasets'), status_code=201, text=self.Raise418)
 
@@ -82,3 +82,13 @@ class MockedDatasetsMixin(requests_mock.Adapter):
 
     def prep(self):
         pass
+
+    @guid
+    @requiresauthentication
+    def __get(self, request, context, session_id, user_id, guid):
+        try:
+            return json.dumps({'dataSet': self.__known[guid]})
+        except KeyError:
+            logger.info("Attempted to retrieve nonexistant {0}".format(guid))
+            context.status_code = 404
+        return
