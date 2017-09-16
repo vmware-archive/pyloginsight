@@ -16,7 +16,7 @@ def has_guid(fn):
     @wraps(fn)
     def wrapper(self, request, context):
         try:
-            guid = example_url_matcher.match(request._url_parts.path).group(1)
+            guid = example_url_matcher.match(request.path).group(1)
         except:
             context.status_code = 404
             return ""
