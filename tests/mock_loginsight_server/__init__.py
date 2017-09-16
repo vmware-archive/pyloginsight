@@ -14,10 +14,21 @@ from pyloginsight.connection import Connection, Credentials
 mockserverlogger = logging.getLogger("LogInsightMockAdapter")
 
 
+RAISE_ON_MISSING_MOCK_IMPLEMENTATION = True
+
+
+class NotImplementedStubForMockAddress(requests_mock.exceptions.NoMockAddress):
+    """register_uri() completed, but implementation is stubbed out."""
+
+
 class LogInsightMockAdapter(MockedExampleObjectMixin, MockedDatasetsMixin, MockedBootstrapMixin, MockedVersionMixin, MockedLicensesMixin, MockedSessionsMixin, MockedAuthProvidersMixin, requests_mock.Adapter):
     def Raise418(self, request, context):
-        context.status_code = 418  # Teapot
-        return "Verb/Route not yet implemented in LoginsightMockAdapter"
+        if RAISE_ON_MISSING_MOCK_IMPLEMENTATION:
+            raise NotImplementedStubForMockAddress(request)
+        context.status_code = 418  # Teapot, because a real server could return 501
+        w = "{r.method} {r.url} not yet implemented in LoginsightMockAdapter".format(r=request)
+        mockserverlogger.warning(w)
+        return w
 
 
 class MockedConnection(Connection):
