@@ -81,11 +81,13 @@ class ServerDictMixin(collections.MutableMapping):
         if not hasattr(self, '_schema'):
             raise SyntaxWarning("Missing __model__ or @bind_to_model on {}".format(self.__class__))
         ser = self._schema()
-        parse = ser.load(self._iterable, many=True, partial=True)
+
+        parse = ser.load(self._iterable, many=True, partial=False)
 
         if parse.errors:
-            for e in parse.errors:
-                logger.warning(e)
+            for e in parse.errors.items():
+                logger.warning(str(e))
+
         for item in parse.data:
             item['_connection'] = self._connection
             item['_url'] = "{0}/{1}".format(self._baseurl, item['id'])

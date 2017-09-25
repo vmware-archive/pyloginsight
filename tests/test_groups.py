@@ -4,6 +4,7 @@ import pytest
 import requests_mock
 from pyloginsight.models import Server, Roles, Role
 
+
 pytestmark = pytest.mark.skip("Broken mock")
 
 

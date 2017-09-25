@@ -152,6 +152,8 @@ class Connection(object):
                    existing_session=connection._requestsession)
 
     def _call(self, method, url, data=None, json=None, params=None, sendauthorization=True):
+        logger.debug("{} {} data={} json={} params={}".format(method, url, data, json, params))
+
         r = self._requestsession.request(method=method,
                                          url="%s%s" % (self._apiroot, url),
                                          data=data,
@@ -186,6 +188,8 @@ class Connection(object):
             except (KeyError, AttributeError):
                 return True
         """
+
+        logger.debug("{} {}: status_code[{}]: {}".format(method, url, r.status_code, payload))
 
         # Success
         if 200 <= r.status_code < 300:

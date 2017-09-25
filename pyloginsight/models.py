@@ -24,7 +24,7 @@ from .abstracts import ServerAddressableObject, AppendableServerDictMixin, Serve
 from .abstracts import ServerProperty, RemoteObjectProxy, ObjectSchema, EnvelopeObjectSchema, bind_to_model
 import json
 import attrdict
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, pre_load
 from .exceptions import TransportError
 
 logger = logging.getLogger(__name__)
@@ -129,9 +129,6 @@ class DatasetSchema(EnvelopeObjectSchema):
     type = fields.Str()
     constraints = fields.List(fields.Dict())
 
-    #def keys(self):
-    #    return [x['id'] for x in self._iterable]
-
 
 class Datasets(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/datasets"
@@ -141,23 +138,34 @@ class Datasets(AppendableServerDictMixin, DirectlyAddressableContainerMapping, S
 
     _fetchone = True
 
-_Role = collections.namedtuple('Role', 'name, description, datasets, capabilities, users')
 
 
-class Role(_Role):
-    def __new__(cls, name, description="", datasets=[], capabilities=[], users=[]):
-        if not isinstance(datasets, ServerListMixin):
-            datasets = ServerListMixin(datasets)
-        if not isinstance(capabilities, ServerListMixin):
-            capabilities = ServerListMixin(capabilities)
-        if not isinstance(users, ServerListMixin):
-            users = ServerListMixin(users)
+class Group(RemoteObjectProxy, attrdict.AttrDict):
+    """
+    An object, canonically at /groups/UUID, which defines a set of users granted Capabilities or view to Datasets.
+    Compatible with Log Insight 4.5 and earlier. Deprecated - use `Roles` instead.
+    """
 
-        self = super(Role, cls).__new__(cls, name, description, datasets, capabilities, users)
-        return self
+# 2017-07-25 c06fa5f3be67e7981ebdcc7cc094c1c5ace14f00
+# Updated the existing /groups API to /roles API
 
 
-class Roles(collections.MutableMapping):
+@bind_to_model
+class GroupSchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'single': 'dataSet',
+        'many': 'dataSets',
+    }
+    __model__ = Dataset
+    id = fields.Str()
+    name = fields.Str()
+    description = fields.Str()
+    type = fields.Str()
+    capabilities = fields.List(fields.Dict())
+    # users?
+
+
+class Groups(collections.MutableMapping):
     def __init__(self, connection):
         self._connection = connection
 
@@ -227,22 +235,22 @@ class Roles(collections.MutableMapping):
                 raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
 
 
-class User(RemoteObjectProxy, attrdict.AttrDict):
+class Role(RemoteObjectProxy, attrdict.AttrDict):
     pass
 
 
 @bind_to_model
-class UserSchema(EnvelopeObjectSchema):
+class RoleSchema(EnvelopeObjectSchema):
     __envelope__ = {
         'single': 'user',
         'many': 'users',
         'append': lambda x: x['user']
     }
-    __model__ = User
+    __model__ = Role
     id = fields.Str()
     username = fields.Str()
     password = fields.Str(dump_only=True)
-    email = fields.Email(missing="", required=False)
+    email = fields.Email(missing=None, required=False)
     type = fields.Str()
     apiId = fields.Str()
     groupIds = fields.List(fields.String())
@@ -252,17 +260,58 @@ class UserSchema(EnvelopeObjectSchema):
     typeEnum = fields.Str()
 
 
+class Roles(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
+    _baseurl = "/users"
+    _single = Role
+    _schema = RoleSchema
+
+
+class User(RemoteObjectProxy, attrdict.AttrDict):
+    def to_server(self, connection, url=None):
+        """
+        The instance validates & serializes itself, then writes back to the server at an existing URL with POST.
+        Alternatively, replace the existing instance in the collection with this instance, `d[k]=instance`.
+        To create a new server-side entity, add this instance to a collection, `d.append(instance)`.
+        """
+        if url is None:
+            url = str(object.__getattribute__(self, "__url"))
+            if url is None:
+                raise AttributeError("Cannot submit object to server without a url")
+
+        return connection.post(url, json=self._serialize()['user'])
+
+
+@bind_to_model
+class UserSchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'single': 'user',
+        'many': 'users',
+        'append': lambda x: x['user'],
+    }
+    __model__ = User
+    id = fields.Str()
+    username = fields.Str()
+    password = fields.Str(dump_only=True)
+    email = fields.Str(missing=None)  # Can we use fields.Email, but allow zero-length strings (or treat them as None)?
+    type = fields.Str()
+    apiId = fields.Str()
+    groupIds = fields.List(fields.String())
+    capabilities = fields.List(fields.String())
+    userCapabilities = fields.List(fields.String())
+    userDataSets = fields.List(fields.String())
+    typeEnum = fields.Str()
+
+    @pre_load(pass_many=False)
+    def nullify_email(self, data):
+        if 'email' in data and data['email'] == '':
+            data['email'] = None
+        return data
+
+
 class Users(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/users"
     _single = User
     _schema = UserSchema
-
-    def asdf__getitem__(self, item):
-        """
-        Retrieve details for a single item from the server. Could raise KeyError.
-        """
-        url = "{0}/{1}".format(self._baseurl, item)
-        return self._single.from_server(self._connection, url)
 
 
 class Server(object):
@@ -300,6 +349,10 @@ class Server(object):
     @property
     def license(self):
         return LicenseKeys(self._connection)
+
+    @property
+    def groups(self):
+        return Groups(self._connection)
 
     @property
     def roles(self):
