@@ -62,7 +62,6 @@ def test_query_strings(pack):
             try:
                 query_string = json.loads(alert.get(key))
                 first_pass_deserialize = QueryStringSchema().load(query_string)
-                pretty_error = json.dumps(first_pass_deserialize.errors, indent=2)
             except TypeError:
                 print('Key is {} and caused TypeError'.format(alert.get(key)))
                 continue
@@ -70,14 +69,13 @@ def test_query_strings(pack):
                 print('Key is {} and caused ValueError.'.format(alert.get(key)))
                 continue
 
-            assert first_pass_deserialize.errors == {}, print('{}\n{}\n{}'.format(key, query_string, pretty_error))
+            assert first_pass_deserialize.errors == {}
 
     for query in pack.get('queries', []):
         for key in ['chartQuery', 'messsageQuery']:
             try:
                 query_string = json.loads(query.get(key))
                 first_pass_deserialize = QueryStringSchema().load(query_string)
-                pretty_error = json.dumps(first_pass_deserialize.errors, indent=2)
             except TypeError:
                 print('Key is {} and caused TypeError'.format(query.get(key)))
                 continue
@@ -85,7 +83,7 @@ def test_query_strings(pack):
                 print('Key is {} and caused ValueError.'.format(query.get(key)))
                 continue
 
-            assert first_pass_deserialize.errors == {}, print('{}\n{}\n{}'.format(key, query_string, pretty_error))
+            assert first_pass_deserialize.errors == {}
 
 
 def test_constraints(pack):
@@ -93,7 +91,6 @@ def test_constraints(pack):
         try:
             constraint_string = json.loads(extracted_field.get('constraints'))
             first_pass_deserialize = ConstraintSchema().load(constraint_string)
-            pretty_error = json.dumps(first_pass_deserialize.errors, indent=2)
         except TypeError:
             print('Key is {} and caused TypeError'.format(extracted_field.get('constraints')))
             continue
@@ -101,8 +98,7 @@ def test_constraints(pack):
             print('Key is {} and caused ValueError.'.format(extracted_field.get('constraints')))
             continue
 
-        assert first_pass_deserialize.errors == {}, print('{}\n{}\n{}'.format('constraints', constraint_string,
-                                                                              pretty_error))
+        assert first_pass_deserialize.errors == {}
 
 
 def test_widget_chart_options(pack):
@@ -114,7 +110,6 @@ def test_widget_chart_options(pack):
                     try:
                         chart_option_string = json.loads(widget.get('chartOptions'))
                         first_pass_deserialize = ChartOptionsSchema().load(chart_option_string)
-                        pretty_error = json.dumps(first_pass_deserialize.errors, indent=2)
                     except TypeError:
                         print('Key is {} and caused TypeError'.format(widget.get('chartOptions')))
                         continue
@@ -122,9 +117,7 @@ def test_widget_chart_options(pack):
                         print('Key is {} and caused ValueError.'.format(widget.get('chartOptions')))
                         continue
 
-                    assert first_pass_deserialize.errors == {}, print('{}\n{}\n{}'.format('chartOpions',
-                                                                                          chart_option_string,
-                                                                                          pretty_error))
+                    assert first_pass_deserialize.errors == {}
 
 
 def test_list_data_options(pack):
@@ -137,7 +130,6 @@ def test_list_data_options(pack):
                         try:
                             list_data_option_string = json.loads(list_data.get('options'))
                             first_pass_deserialize = ListDataOptionsSchema().load(list_data_option_string)
-                            pretty_error = json.dumps(first_pass_deserialize.errors, indent=2)
                         except TypeError:
                             print('Key is {} and caused TypeError'.format(list_data.get('options')))
                             continue
@@ -145,9 +137,4 @@ def test_list_data_options(pack):
                             print('Key is {} and caused ValueError.'.format(list_data.get('options')))
                             continue
 
-                        assert first_pass_deserialize.errors == {}, print('{}\n{}\n{}'.format('options',
-                                                                                              list_data_option_string,
-                                                                                              pretty_error))
-
-
-
+                        assert first_pass_deserialize.errors == {}
