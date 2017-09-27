@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-from pyloginsight.content import *
+from pyloginsight.content import PackSchema, QueryStringSchema, ConstraintSchema, ChartOptionsSchema
+from pyloginsight.content import ListDataOptionsSchema
 import json
 import os
 from glob import glob
-import re
 
 
 def pytest_generate_tests(metafunc):
@@ -92,7 +92,7 @@ def test_constraints(pack):
     for extracted_field in pack.get('extractedFields', []):
         try:
             constraint_string = json.loads(extracted_field.get('constraints'))
-            first_pass_deserialize = QueryStringSchema().load(constraint_string)
+            first_pass_deserialize = ConstraintSchema().load(constraint_string)
             pretty_error = json.dumps(first_pass_deserialize.errors, indent=2)
         except TypeError:
             print('Key is {} and caused TypeError'.format(extracted_field.get('constraints')))
@@ -113,7 +113,7 @@ def test_widget_chart_options(pack):
                 for widget in row.get('widgets', []):
                     try:
                         chart_option_string = json.loads(widget.get('chartOptions'))
-                        first_pass_deserialize = QueryStringSchema().load(chart_option_string)
+                        first_pass_deserialize = ChartOptionsSchema().load(chart_option_string)
                         pretty_error = json.dumps(first_pass_deserialize.errors, indent=2)
                     except TypeError:
                         print('Key is {} and caused TypeError'.format(widget.get('chartOptions')))
@@ -135,8 +135,8 @@ def test_list_data_options(pack):
                 for widget in row.get('widgets', []):
                     for list_data in widget.get('listData', []):
                         try:
-                            chart_option_string = json.loads(list_data.get('options'))
-                            first_pass_deserialize = QueryStringSchema().load(chart_option_string)
+                            list_data_option_string = json.loads(list_data.get('options'))
+                            first_pass_deserialize = ListDataOptionsSchema().load(list_data_option_string)
                             pretty_error = json.dumps(first_pass_deserialize.errors, indent=2)
                         except TypeError:
                             print('Key is {} and caused TypeError'.format(list_data.get('options')))
@@ -146,7 +146,7 @@ def test_list_data_options(pack):
                             continue
 
                         assert first_pass_deserialize.errors == {}, print('{}\n{}\n{}'.format('options',
-                                                                                              chart_option_string,
+                                                                                              list_data_option_string,
                                                                                               pretty_error))
 
 
