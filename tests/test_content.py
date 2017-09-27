@@ -2,9 +2,10 @@
 
 from pyloginsight.content import PackSchema, QueryStringSchema, ConstraintSchema, ChartOptionsSchema
 from pyloginsight.content import ListDataOptionsSchema
+from glob import glob
 import json
 import os
-from glob import glob
+import re
 
 
 def pytest_generate_tests(metafunc):
@@ -51,9 +52,21 @@ def test_pack(pack):
     normalized_second_pass_json_string = json.dumps(second_pass_serialized_pack.data, indent=1, sort_keys=True)
     assert normalized_first_pass_json_string == normalized_second_pass_json_string
 
-    # This assertion will no work because of nested strings and the numerous nested formats.
-    # normalized_pack_json_string = json.dumps(pack, indent=1, sort_keys=True)
-    # assert normalized_pack_json_string == normalized_first_pass_json_string
+    # The following attempts to compare the original content pack value with the serialized values, but
+    # certain keys with strings containing nested values are skipped because of varying uses of whitespace and quotes.
+    stripped_pack_string = json.dumps(pack, indent=1, sort_keys=True)
+    stripped_first_pass_string = normalized_first_pass_json_string
+    stripped_second_pass_string = normalized_second_pass_json_string
+
+    for bad_field in ['chartQuery', 'messageQuery', 'options', 'chartOptions', 'constraints', 'agentConfig']:
+        pattern = re.compile('.*{}.+\n'.format(bad_field))
+        stripped_pack_string = re.sub(pattern=pattern, repl='', string=stripped_pack_string)
+        stripped_first_pass_string = re.sub(pattern=pattern, repl='', string=stripped_first_pass_string)
+        stripped_second_pass_string = re.sub(pattern=pattern, repl='', string=stripped_second_pass_string)
+
+    assert stripped_pack_string == stripped_first_pass_string
+    assert stripped_pack_string == stripped_second_pass_string
+
 
 
 def test_query_strings(pack):

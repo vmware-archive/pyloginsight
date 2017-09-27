@@ -27,6 +27,13 @@ class JsonString(fields.Nested):
 
     def _serialize(self, nested_obj, attr, obj):
         result = super(JsonString, self)._serialize(nested_obj=nested_obj, attr=attr, obj=obj)
+
+        if attr in ['messageQuery', 'chartQuery'] and result is None:
+            return ""
+
+        elif attr in ['chartOptions', 'constraints'] and result is None:
+            return None
+
         return json.dumps(result, sort_keys=True)
 
 
@@ -134,6 +141,7 @@ class AlertSchema(BaseContentSchema):
     alertType = fields.Str(attribute='alert_type')
     chartQuery = JsonString(QueryStringSchema, attribute='chart_query', allow_none=True)
     messageQuery = JsonString(QueryStringSchema, attribute='message_query', allow_none=True)
+    recommendation = fields.Str()
     hitCount = fields.Float(attribute='hit_count')
     hitOperator = fields.Str(attribute='hit_operator')
     searchPeriod = fields.Int(attribute='search_period')
@@ -171,7 +179,7 @@ class WidgetSchema(BaseContentSchema):
     listData = fields.Nested(ListDataSchema, attribute='list_data', required=False, many=True)
     columns = fields.Nested(GroupByFieldSchema, required=False, many=True)
     gridWidth = fields.Str(required=False, attribute='grid_width')
-    widgetType = fields.Str(required=False, attribute='grid_width')
+    widgetType = fields.Str(required=False, attribute='widget_type')
 
 
 class RowSchema(BaseContentSchema):
