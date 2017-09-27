@@ -49,7 +49,11 @@ def pytest_addoption(parser):
         help="Used with --server")
     parser.addoption(
         "--license", action="store", required=False,
-        help="Apply license to --server if needed")
+        help="Apply license to --server if needed"),
+    parser.addoption(
+        "--packs", nargs='+', action="store", default=['sample_content.vlcp'],
+        help="A list of content pack files to test."
+    )
 
 
 def identifiers_for_server_list(val):
