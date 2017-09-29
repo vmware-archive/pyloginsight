@@ -257,3 +257,4 @@ class PackSchema(BaseContentSchema):
     agentClasses = fields.Nested(AgentClassesSchema, attribute='agent_classes', many=True, required=False)
     aliasFields = fields.Nested(AliasFieldsSchema, attribute='alias_fields', many=True, required=False)
     aliasRules = fields.Nested(AliasRulesSchema, attribute='alias_rules', many=True, required=False)
+
