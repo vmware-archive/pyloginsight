@@ -70,189 +70,191 @@ class AgentConfigString(fields.Field):
 
 
 class FilterSchema(BaseContentSchema):
-    internalName = fields.Str(attribute='internal_name')
-    displayName = fields.Str(attribute='display_name')
-    operator = fields.Str()
-    value = fields.Str(allow_none=True)
-    fieldType = fields.Str(attribute='field_type')
-    isExtracted = fields.Bool(attribute='is_extracted')
-    hidden = fields.Bool()
+    internalName = fields.Str(attribute='internal_name', required=False)
+    displayName = fields.Str(attribute='display_name', required=False)
+    operator = fields.Str(required=False)
+    value = fields.Str(allow_none=True, required=False)
+    fieldType = fields.Str(attribute='field_type', required=False)
+    isExtracted = fields.Bool(attribute='is_extracted', required=False)
+    hidden = fields.Bool(required=False)
 
 
 class ConstraintSchema(BaseContentSchema):
-    searchTerms = fields.Str(attribute='search_terms')
-    filters = fields.Nested(FilterSchema, many=True)
+    searchTerms = fields.Str(attribute='search_terms', required=False)
+    filters = fields.Nested(FilterSchema, many=True, required=False)
 
 
 class ExtractedFieldSchema(BaseContentSchema):
-    displayName = fields.Str(attribute='display_name')
-    preContext = fields.Str(attribute='pre_context')
-    postContext = fields.Str(attribute='post_context')
-    regexValue = fields.Str(attribute='regex_value')
-    internalName = fields.Str(attribute='internal_name')
-    info = fields.Str(required=False, allow_none=True)
-    constraints = JsonString(ConstraintSchema, allow_none=True)
+    displayName = fields.Str(attribute='display_name', required=False)
+    preContext = fields.Str(attribute='pre_context', required=False)
+    postContext = fields.Str(attribute='post_context', required=False)
+    regexValue = fields.Str(attribute='regex_value', required=False)
+    internalName = fields.Str(attribute='internal_name', required=False)
+    info = fields.Str(allow_none=True, required=False)
+    constraints = JsonString(ConstraintSchema, allow_none=True, required=False)
 
 
 class GroupByFieldSchema(BaseContentSchema):
-    internalName = fields.Str(attribute='internal_name')
-    numericGroupByType = fields.Str(attribute='numeric_group_by_type')
-    displayName = fields.Str(attribute='display_name')
-    numericGroupByValue = fields.Str(attribute='numeric_group_by_value', allow_none=True)
-    displayNamespace = fields.Str(attribute='display_namespace', allow_none=True)
+    internalName = fields.Str(attribute='internal_name', required=False)
+    numericGroupByType = fields.Str(attribute='numeric_group_by_type', required=False)
+    displayName = fields.Str(attribute='display_name', required=False)
+    numericGroupByValue = fields.Str(attribute='numeric_group_by_value', allow_none=True, required=False)
+    displayNamespace = fields.Str(attribute='display_namespace', allow_none=True, required=False)
 
 
 class PiqlFunctionSchema(BaseContentSchema):
-    numericOnly = fields.Bool(attribute='numeric_only')
-    requiresField = fields.Bool(attribute='requires_field')
-    value = fields.Str()
-    label = fields.Str()
+    numericOnly = fields.Bool(attribute='numeric_only', required=False)
+    requiresField = fields.Bool(attribute='requires_field', required=False)
+    value = fields.Str(required=False)
+    label = fields.Str(required=False)
 
 
 class PiqlFunctionGroupsSchema(BaseContentSchema):
-    field = fields.Nested(ExtractedFieldSchema, allow_none=True)
-    functions = fields.Nested(PiqlFunctionSchema, many=True)
+    field = fields.Nested(ExtractedFieldSchema, allow_none=True, required=True)
+    functions = fields.Nested(PiqlFunctionSchema, many=True, required=True)
 
 
 class QueryStringSchema(BaseContentSchema):
-    groupByFields = fields.Nested(GroupByFieldSchema, attribute='group_by_fields', many=True)
-    piqlFunction = fields.Nested(PiqlFunctionSchema, attribute='piql_function')
-    endTimeMillis = fields.Int(attribute='end_time_millis')
-    summarySortOrder = fields.Str(attribute='summary_sort_order')
-    compareQueryOrderBy = fields.Str(attribute='compare_query_order_by')
-    piqlFunctionField = fields.Str(attribute='piql_function_field', allow_none=True)
-    shouldGroupByTime = fields.Bool(attribute='should_group_by_time')
-    fieldConstraints = fields.Nested(FilterSchema, attribute='field_constraints', many=True)
-    constraintToggle = fields.Str(attribute='constraint_toggle')
-    eventSortOrder = fields.Str(attribute='event_sort_order')
-    dateFilterPreset = fields.Str(attribute='date_filter_preset')
-    compareQueryOptions = fields.Str(attribute='compare_query_options', allow_none=True)
-    supplementalConstraints = fields.Nested(FilterSchema, attribute='supplemental_constraints', many=True)
-    compareQuerySortOrder = fields.Str(attribute='compare_query_sort_order')
-    messageViewType = fields.Str(attribute='message_view_type')
-    query = fields.Str()
-    startTimeMillis = fields.Int(attribute='start_time_millis')
-    piqlFunctionGroups = fields.Nested(PiqlFunctionGroupsSchema, attribute='piql_function_groups', many=True)
+    groupByFields = fields.Nested(GroupByFieldSchema, attribute='group_by_fields', many=True, required=False)
+    piqlFunction = fields.Nested(PiqlFunctionSchema, attribute='piql_function', required=False)
+    endTimeMillis = fields.Int(attribute='end_time_millis', required=False)
+    summarySortOrder = fields.Str(attribute='summary_sort_order', required=False)
+    compareQueryOrderBy = fields.Str(attribute='compare_query_order_by', required=False)
+    piqlFunctionField = fields.Str(attribute='piql_function_field', allow_none=True, required=False)
+    shouldGroupByTime = fields.Bool(attribute='should_group_by_time', required=False)
+    fieldConstraints = fields.Nested(FilterSchema, attribute='field_constraints', many=True, required=True)
+    constraintToggle = fields.Str(attribute='constraint_toggle', required=False)
+    eventSortOrder = fields.Str(attribute='event_sort_order', required=False)
+    dateFilterPreset = fields.Str(attribute='date_filter_preset', required=False)
+    compareQueryOptions = fields.Str(attribute='compare_query_options', allow_none=True, required=False)
+    supplementalConstraints = fields.Nested(FilterSchema, attribute='supplemental_constraints', many=True, required=True)
+    compareQuerySortOrder = fields.Str(attribute='compare_query_sort_order', required=False)
+    messageViewType = fields.Str(attribute='message_view_type', required=False)
+    query = fields.Str(required=False)
+    startTimeMillis = fields.Int(attribute='start_time_millis', required=True)
+    piqlFunctionGroups = fields.Nested(PiqlFunctionGroupsSchema, attribute='piql_function_groups', many=True,
+                                       required=False)
 
 
 class AlertSchema(BaseContentSchema):
-    name = fields.Str()
+    name = fields.Str(required=True)
     info = fields.Str(allow_none=True)
-    alertType = fields.Str(attribute='alert_type')
-    chartQuery = JsonString(QueryStringSchema, attribute='chart_query', allow_none=True)
-    messageQuery = JsonString(QueryStringSchema, attribute='message_query', allow_none=True)
-    recommendation = fields.Str()
-    hitCount = fields.Float(attribute='hit_count')
-    hitOperator = fields.Str(attribute='hit_operator')
-    searchPeriod = fields.Int(attribute='search_period')
-    searchInterval = fields.Int(attribute='search_interval')
+    alertType = fields.Str(attribute='alert_type', required=True)
+    chartQuery = JsonString(QueryStringSchema, attribute='chart_query', allow_none=True, required=True)
+    messageQuery = JsonString(QueryStringSchema, attribute='message_query', allow_none=True, required=False)
+    recommendation = fields.Str(required=False)
+    hitCount = fields.Float(attribute='hit_count', required=True)
+    hitOperator = fields.Str(attribute='hit_operator', required=True)
+    searchPeriod = fields.Int(attribute='search_period', required=True)
+    searchInterval = fields.Int(attribute='search_interval', required=True)
 
 
 class ChartOptionsSchema(BaseContentSchema):
-    logaxis = fields.Bool()
-    legend = fields.Bool()
-    trendline = fields.Bool()
-    spline = fields.Bool()
+    logaxis = fields.Bool(required=False)
+    legend = fields.Bool(required=False)
+    trendline = fields.Bool(required=False)
+    spline = fields.Bool(required=False)
 
 
 class ListDataOptionsSchema(BaseContentSchema):
-    chartTypeName = fields.Str(attribute='chart_type_name', allow_none=True)
-    chartOptions = JsonString(ChartOptionsSchema, attribute='chart_options')
+    chartTypeName = fields.Str(attribute='chart_type_name', allow_none=True, required=False)
+    chartOptions = JsonString(ChartOptionsSchema, attribute='chart_options', required=True)
 
 
 class ListDataSchema(BaseContentSchema):
-    name = fields.Str()
-    chartQuery = JsonString(QueryStringSchema, attribute='chart_query', allow_none=True)
-    messageQuery = JsonString(QueryStringSchema, attribute='message_query', allow_none=True)
-    info = fields.Str(allow_none=True)
-    options = JsonString(ListDataOptionsSchema)
+    name = fields.Str(required=True)
+    chartQuery = JsonString(QueryStringSchema, attribute='chart_query', allow_none=True, required=True)
+    messageQuery = JsonString(QueryStringSchema, attribute='message_query', allow_none=True, required=True)
+    info = fields.Str(allow_none=True, required=True)
+    options = JsonString(ListDataOptionsSchema, required=False)
 
 
 class WidgetSchema(BaseContentSchema):
-    name = fields.Str()
-    info = fields.Str(allow_none=True)
-    chartType = fields.Str(attribute='chart_type', allow_none=True)
-    chartOptions = JsonString(ChartOptionsSchema, attribute='chart_options', allow_none=True)
-    chartQuery = JsonString(QueryStringSchema, attribute='chart_query', allow_none=True)
-    messageQuery = JsonString(QueryStringSchema, attribute='message_query', allow_none=True)
-    listType = fields.Str(attribute='list_type', required=False, allow_none=True)
-    listData = fields.Nested(ListDataSchema, attribute='list_data', required=False, many=True)
-    columns = fields.Nested(GroupByFieldSchema, required=False, many=True)
-    gridWidth = fields.Str(required=False, attribute='grid_width')
-    widgetType = fields.Str(required=False, attribute='widget_type')
+    name = fields.Str(required=True)
+    info = fields.Str(allow_none=True, required=True)
+    chartType = fields.Str(attribute='chart_type', allow_none=True, required=False)
+    chartOptions = JsonString(ChartOptionsSchema, attribute='chart_options', allow_none=True, required=False)
+    chartQuery = JsonString(QueryStringSchema, attribute='chart_query', allow_none=True, required=False)
+    messageQuery = JsonString(QueryStringSchema, attribute='message_query', allow_none=True, required=False)
+    listType = fields.Str(attribute='list_type', allow_none=False, required=False)
+    listData = fields.Nested(ListDataSchema, attribute='list_data', many=True, required=False)
+    columns = fields.Nested(GroupByFieldSchema, many=True, required=False)
+    gridWidth = fields.Str(attribute='grid_width', required=False)
+    widgetType = fields.Str(attribute='widget_type', required=True)
 
 
 class RowSchema(BaseContentSchema):
-    widgets = fields.Nested(WidgetSchema, many=True)
+    widgets = fields.Nested(WidgetSchema, many=True, required=True)
 
 
 class ViewSchema(BaseContentSchema):
-    name = fields.Str()
-    constraints = fields.Nested(FilterSchema, many=True)  # called constraints, but actually a filter object
-    rows = fields.Nested(RowSchema, many=True)
+    name = fields.Str(required=True)
+    constraints = fields.Nested(FilterSchema, many=True, required=True)  # called constraints, but actually a filter object
+    rows = fields.Nested(RowSchema, many=True, required=True)
 
 
 class DashboardSectionsSchema(BaseContentSchema):
-    views = fields.Nested(ViewSchema, many=True)
-    header = fields.Str()
+    views = fields.Nested(ViewSchema, many=True, required=True)
+    header = fields.Str(required=True)
 
 
 class AgentClassesSchema(BaseContentSchema):
-    name = fields.Str()
-    info = fields.Str(allow_none=True)
-    agentConfig = AgentConfigString(attribute='agent_config')
+    name = fields.Str(required=True)
+    info = fields.Str(allow_none=True, required=True)
+    agentConfig = AgentConfigString(attribute='agent_config', required=True)
 
 
 class AliasSchema(BaseContentSchema):
-    key = fields.Str()
-    value = fields.Str()
+    key = fields.Str(required=True)
+    value = fields.Str(required=True)
 
 
 class AliasFieldsSchema(BaseContentSchema):
-    name = fields.Str()
-    searchField = fields.Str(attribute='search_field')
-    aliases = fields.Nested(AliasSchema, many=True)
+    name = fields.Str(required=True)
+    searchField = fields.Str(attribute='search_field', required=True)
+    aliases = fields.Nested(AliasSchema, many=True, required=True)
 
 
 class AliasRulesSchema(BaseContentSchema):
-    name = fields.Str()
-    filter = fields.Str()
-    keyField = fields.Str(attribute='key_field')
-    valueField = fields.Str(attribute='value_field')
-    aliasFieldName = fields.Str(attribute='alias_field_name')
-    associatedFields = fields.List(fields.Str(), attribute='associated_fields')
+    name = fields.Str(required=True)
+    filter = fields.Str(required=True)
+    keyField = fields.Str(attribute='key_field', required=True)
+    valueField = fields.Str(attribute='value_field', required=True)
+    aliasFieldName = fields.Str(attribute='alias_field_name', required=True)
+    associatedFields = fields.List(fields.Str(), attribute='associated_fields', required=True)
 
 
 class QueryOptionsSchema(BaseContentSchema):
-    chartTypeName = fields.Str(attribute='chart_type_name', allow_none=True)
-    chartOptions = JsonString(ChartOptionsSchema, attribute='chart_options', allow_none=True)
+    chartTypeName = fields.Str(attribute='chart_type_name', allow_none=True, required=True)
+    chartOptions = JsonString(ChartOptionsSchema, attribute='chart_options', allow_none=True, required=True)
 
 
 class QuerySchema(BaseContentSchema):
-    name = fields.Str()
-    chartQuery = JsonString(QueryStringSchema, attribute='chart_query')
-    messageQuery = JsonString(QueryStringSchema, attribute='message_query', default="", allow_none=True)
-    info = fields.Str(allow_none=True)
-    options = JsonString(QueryOptionsSchema, allow_none=True)
+    name = fields.Str(required=True)
+    chartQuery = JsonString(QueryStringSchema, attribute='chart_query', required=True)
+    messageQuery = JsonString(QueryStringSchema, attribute='message_query', default="", allow_none=True, required=True)
+    info = fields.Str(allow_none=True, required=False)
+    options = JsonString(QueryOptionsSchema, allow_none=True, required=False)
 
 
 class PackSchema(BaseContentSchema):
-    name = fields.Str()
-    namespace = fields.Str()
-    contentPackId = fields.Str(attribute='content_pack_id')
-    framework = fields.Str()
-    version = fields.Str()
-    author = fields.Str()
-    url = fields.Str()  # should be validated
-    contentVersion = fields.Str(attribute='content_version')
-    info = fields.Str(allow_none=True)
-    instructions = fields.Str()
-    upgradeInstructions = fields.Str()
-    icon = fields.Str()
-    extractedFields = fields.Nested(ExtractedFieldSchema, attribute='extracted_fields', many=True)
-    queries = fields.Nested(QuerySchema, many=True)
-    alerts = fields.Nested(AlertSchema, many=True)
-    dashboardSections = fields.Nested(DashboardSectionsSchema, attribute='dashboard_sections', many=True)
-    agentClasses = fields.Nested(AgentClassesSchema, attribute='agent_classes', many=True)
-    aliasFields = fields.Nested(AliasFieldsSchema, attribute='alias_fields', many=True)
-    aliasRules = fields.Nested(AliasRulesSchema, attribute='alias_rules', many=True)
+    name = fields.Str(required=True)
+    namespace = fields.Str(required=True)
+    contentPackId = fields.Str(attribute='content_pack_id', required=False)
+    framework = fields.Str(required=True)
+    version = fields.Str(required=True)
+    author = fields.Str(required=True)
+    url = fields.Str(required=True)  # should be validated
+    contentVersion = fields.Str(attribute='content_version', required=True)
+    info = fields.Str(allow_none=True, required=True)
+    instructions = fields.Str(required=False)
+    upgradeInstructions = fields.Str(required=False)
+    icon = fields.Str(required=True)
+    extractedFields = fields.Nested(ExtractedFieldSchema, attribute='extracted_fields', many=True, required=True)
+    queries = fields.Nested(QuerySchema, many=True, required=True)
+    alerts = fields.Nested(AlertSchema, many=True, required=True)
+    dashboardSections = fields.Nested(DashboardSectionsSchema, attribute='dashboard_sections', many=True, required=True)
+    agentClasses = fields.Nested(AgentClassesSchema, attribute='agent_classes', many=True, required=False)
+    aliasFields = fields.Nested(AliasFieldsSchema, attribute='alias_fields', many=True, required=False)
+    aliasRules = fields.Nested(AliasRulesSchema, attribute='alias_rules', many=True, required=False)
+
