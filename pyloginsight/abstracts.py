@@ -3,19 +3,19 @@
 
 import logging
 import collections
-from .exceptions import ResourceNotFound, Cancel, InefficientGetterUsesIteration
+from .exceptions import ResourceNotFound, Cancel, InefficientGetterUsesIteration, CallableServerAddressableObject
 import abc
 import warnings
 from marshmallow import Schema, pre_load, post_dump, post_load
 from collections import Mapping
 import weakref
 
+
 logger = logging.getLogger(__name__)
 ABC = abc.ABCMeta('ABC', (object,), {})
 
 
 def bind_to_model(cls):
-    import weakref
     if cls.__model__ is not None:
         logger.error("Binding schema {} to model {}".format(cls, cls.__model__))
         cls.__model__.__schema__ = weakref.proxy(cls)
@@ -231,7 +231,8 @@ class ServerAddressableObject(ABC):
         An idealized representation of the object.
         Default implementation returns the top-level dict; override in child class.
         """
-        warnings.warn("TODO: Should a ServerAddressableObject be callable?")
+        warnings.warn(str(self.__class__), CallableServerAddressableObject)
+
         return self.asdict()
 
     # The combination of __dir__ and __getattr__ makes it seem like realized objects have properties that are populated on-demand,
@@ -393,6 +394,7 @@ class ObjectSchema(Schema):
         for k, v in self.context.items():
             object.__setattr__(o, "__" + k, v)
         return o
+
 
 class EnvelopeObjectSchema(ObjectSchema):
     # Custom options

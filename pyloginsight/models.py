@@ -19,12 +19,10 @@
 
 from distutils.version import StrictVersion
 import logging
-import collections
-from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin, DirectlyAddressableContainerMapping
+from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, DirectlyAddressableContainerMapping
 from .abstracts import ServerProperty, RemoteObjectProxy, ObjectSchema, EnvelopeObjectSchema, bind_to_model
-import json
 import attrdict
-from marshmallow import Schema, fields, pre_load
+from marshmallow import fields
 from .exceptions import TransportError
 
 logger = logging.getLogger(__name__)
@@ -139,7 +137,6 @@ class Datasets(AppendableServerDictMixin, DirectlyAddressableContainerMapping, S
     _fetchone = True
 
 
-
 class Group(RemoteObjectProxy, attrdict.AttrDict):
     """
     An object, canonically at /groups/UUID, which defines a set of users granted Capabilities or view to Datasets.
@@ -169,7 +166,6 @@ class Groups(AppendableServerDictMixin, DirectlyAddressableContainerMapping, Ser
     _baseurl = "/groups"
     _single = Group
     _schema = GroupSchema
-
 
 
 class Role(RemoteObjectProxy, attrdict.AttrDict):
@@ -229,6 +225,7 @@ class NullableStringField(fields.Str):
             return None
         return value
 
+
 @bind_to_model
 class UserSchema(EnvelopeObjectSchema):
 
@@ -249,12 +246,6 @@ class UserSchema(EnvelopeObjectSchema):
     userCapabilities = fields.List(fields.String())
     userDataSets = fields.List(fields.String())
     typeEnum = fields.Str()
-
-    #@pre_load(pass_many=False)
-    def nullify_email(self, data):
-        if 'email' in data and data['email'] == '':
-            data['email'] = None
-        return data
 
 
 class Users(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):

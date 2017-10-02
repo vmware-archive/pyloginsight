@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from requests import HTTPError
-import warnings
 
 
 class ServerError(BaseException):
@@ -38,4 +37,9 @@ class AlreadyBootstrapped(ServerError):
 
 class InefficientGetterUsesIteration(UserWarning):
     """Iterating over and instantiating all items in collection to retrieve a single item."""
+    pass
+
+
+class CallableServerAddressableObject(DeprecationWarning):
+    """A ServerAddressableObject is currently callable, to produce a dict-like object. It might be removed in the future."""
     pass
