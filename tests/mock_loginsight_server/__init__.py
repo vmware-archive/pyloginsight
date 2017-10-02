@@ -1,5 +1,7 @@
 import requests_mock
 import logging
+import pytest
+
 
 from .sessions import MockedSessionsMixin
 from .licenses import MockedLicensesMixin
@@ -8,26 +10,29 @@ from .exampleobject import MockedExampleObjectMixin
 from .auth_providers import MockedAuthProvidersMixin
 from .bootstrap import MockedBootstrapMixin
 from .datasets_mock import MockedDatasetsMixin
+from .groups_mock import MockedGroupsMixin
+from .roles_mock import MockedRolesMixin
 
 from pyloginsight.connection import Connection, Credentials
 
 mockserverlogger = logging.getLogger("LogInsightMockAdapter")
 
 
-RAISE_ON_MISSING_MOCK_IMPLEMENTATION = True
+RAISE_ON_MISSING_MOCK_IMPLEMENTATION = False
 
 
 class NotImplementedStubForMockAddress(requests_mock.exceptions.NoMockAddress):
     """register_uri() completed, but implementation is stubbed out."""
 
 
-class LogInsightMockAdapter(MockedExampleObjectMixin, MockedDatasetsMixin, MockedBootstrapMixin, MockedVersionMixin, MockedLicensesMixin, MockedSessionsMixin, MockedAuthProvidersMixin, requests_mock.Adapter):
+class LogInsightMockAdapter(MockedExampleObjectMixin, MockedRolesMixin, MockedGroupsMixin, MockedDatasetsMixin, MockedBootstrapMixin, MockedVersionMixin, MockedLicensesMixin, MockedSessionsMixin, MockedAuthProvidersMixin, requests_mock.Adapter):
     def Raise418(self, request, context):
         if RAISE_ON_MISSING_MOCK_IMPLEMENTATION:
             raise NotImplementedStubForMockAddress(request)
         context.status_code = 418  # Teapot, because a real server could return 501
         w = "{r.method} {r.url} not yet implemented in LoginsightMockAdapter".format(r=request)
         mockserverlogger.warning(w)
+        pytest.xfail(w)
         return w
 
 

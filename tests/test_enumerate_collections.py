@@ -88,6 +88,18 @@ def test_get_nonexistant(connection, collection_class):
         _ = collection["000000000-000-0000-0000-000000000000"]
 
 
+def test_delete_nonexistant(connection, collection_class):
+    """Trying to delete a non-existent item from a collection produces a KeyError."""
+    collection = collection_class(connection)
+
+    # Be certain that the fake key we're trying to fetch really doesn't exist.
+    for key, value in collection.items():
+        assert key != "000000000-000-0000-0000-000000000000"
+
+    with pytest.raises(KeyError):
+        del collection["000000000-000-0000-0000-000000000000"]
+
+
 def test_keys_are_in_collection(connection, collection_class):
     """Can use `item in collection` to determine collection membership."""
     collection = collection_class(connection)
