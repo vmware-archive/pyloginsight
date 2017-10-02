@@ -143,7 +143,7 @@ def test_way_i_want_to_use_roles_and_datasets(server):
 
     # 1 HTTP POST to /groups
     new_id = server.roles.append(r)
-    assert isinstance(new_id, str)
+    assert isinstance(new_id, (u"".__class__, "".__class__))
 
     # Update the server immediately
     # What does this do?? One HTTP POST/PATCH to /groups/{groupid}

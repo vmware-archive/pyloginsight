@@ -41,7 +41,7 @@ def test_iterate_by_key(connection, collection_class):
     count = 0
     for key in collection:
         count += 1
-        assert isinstance(key, str) or isinstance(key, int)
+        assert isinstance(key, (u"".__class__, "".__class__, int))
 
     assert count == len(collection)
 
@@ -54,7 +54,7 @@ def test_iterate_by_items(connection, collection_class):
     count = 0
     for key, value in collection.items():
         count += 1
-        assert isinstance(key, str) or isinstance(key, int)
+        assert isinstance(key, (u"".__class__, "".__class__, int))
         assert isinstance(value, Single)
 
     assert count == len(collection)
@@ -105,6 +105,6 @@ def test_keys_are_in_collection(connection, collection_class):
     collection = collection_class(connection)
 
     for key in collection:
-        assert isinstance(key, str) or isinstance(key, int)
+        assert isinstance(key, (u"".__class__, "".__class__, int))
         assert key in collection
         assert key != "000000000-000-0000-0000-000000000000"

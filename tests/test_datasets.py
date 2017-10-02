@@ -30,7 +30,7 @@ def test_remove_nonexistant(connection):
 
     # the fake key we're trying to delete really doesn't exist
     for guid, item in connection.server.datasets.items():
-        assert isinstance(guid, str)
+        assert isinstance(guid, (u"".__class__, "".__class__))
         assert isinstance(item, Dataset)
         assert guid != "000000000-000-0000-0000-000000000000"
 
