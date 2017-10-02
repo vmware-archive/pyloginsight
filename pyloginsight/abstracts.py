@@ -86,7 +86,7 @@ class ServerDictMixin(collections.MutableMapping):
 
         if parse.errors:
             for e in parse.errors.items():
-                logger.warning(str(e))
+                logger.warning("Parse error when loading items: {}".format(str(e)))
 
         for item in parse.data:
             item['_connection'] = self._connection
@@ -99,7 +99,8 @@ class ServerDictMixin(collections.MutableMapping):
 
         if parse.errors:
             for e in parse.errors:
-                logger.warning(e)
+                logger.warning("Parse error when loading keys: {}".format(str(e)))
+
         return [item['id'] for item in parse.data]
 
     def __iter__(self):
@@ -270,7 +271,7 @@ class RemoteObjectProxy(object):
         schema.context.update({"url": url, "connection": connection})
         body, errors = schema.load(data, many=False)
         for e in errors:
-            logger.warning(e)
+            logger.warning("Error deserializing field {}=>{} in from_dict(data={})".format(str(e), errors[e], data))
         return body
 
     @classmethod
@@ -290,7 +291,7 @@ class RemoteObjectProxy(object):
         """
         data, errors = self.__schema__().dump(self)
         for e in errors:
-            logger.warning(e)
+            logger.warning("Error serializing for sending to the server: {}".format(str(e)))
 
         return data
 

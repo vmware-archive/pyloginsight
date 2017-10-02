@@ -12,7 +12,7 @@ def uuid_url_matcher(base):
     return re.compile('/api/v1/' + base + '/([a-f0-9-]+)$')
 
 
-User = namedtuple("User", field_names=["username", "password", "provider", "email"])
+User = namedtuple("User", field_names=["username", "password", "type", "email"])
 Session = namedtuple("Session", field_names=["userId", "ttl", "created"])
 
 

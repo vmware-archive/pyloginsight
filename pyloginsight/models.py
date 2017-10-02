@@ -281,8 +281,20 @@ class User(RemoteObjectProxy, attrdict.AttrDict):
         return connection.post(url, json=self._serialize()['user'])
 
 
+class NullableStringField(fields.Str):
+    def _serialize(self, value, attr, obj):
+        if value is None:
+            return ''
+        return value
+
+    def _deserialize(self, value, attr, data):
+        if value == '':
+            return None
+        return value
+
 @bind_to_model
 class UserSchema(EnvelopeObjectSchema):
+
     __envelope__ = {
         'single': 'user',
         'many': 'users',
@@ -292,8 +304,8 @@ class UserSchema(EnvelopeObjectSchema):
     id = fields.Str()
     username = fields.Str()
     password = fields.Str(dump_only=True)
-    email = fields.Str(missing=None)  # Can we use fields.Email, but allow zero-length strings (or treat them as None)?
-    type = fields.Str()
+    email = NullableStringField(missing=None, required=False, allow_none=True)  # Can we use fields.Email, but allow zero-length strings (or treat them as None)?
+    type = fields.Str(missing="DEFAULT")
     apiId = fields.Str()
     groupIds = fields.List(fields.String())
     capabilities = fields.List(fields.String())
@@ -301,7 +313,7 @@ class UserSchema(EnvelopeObjectSchema):
     userDataSets = fields.List(fields.String())
     typeEnum = fields.Str()
 
-    @pre_load(pass_many=False)
+    #@pre_load(pass_many=False)
     def nullify_email(self, data):
         if 'email' in data and data['email'] == '':
             data['email'] = None

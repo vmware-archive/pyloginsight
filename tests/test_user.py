@@ -2,7 +2,8 @@
 from __future__ import print_function
 import pytest
 from pyloginsight.models import Users, User
-from pyloginsight.exceptions import ResourceNotFound
+from pyloginsight.connection import Credentials
+from pyloginsight.exceptions import Unauthorized
 import uuid
 import logging
 from collections import namedtuple
@@ -51,7 +52,6 @@ def test_modify_an_existing_user_object(connection):
     new_user_id = d.append(new_user)
     print("Created new user id", new_user_id, ":", new_user)
 
-
     # Setup Completed
 
     # Get and mutate the object
@@ -60,7 +60,6 @@ def test_modify_an_existing_user_object(connection):
 
     with refetch_user as m:
         m.email = "testuser_changed_email@local.localdom"
-
 
     # Retrieve updated object from server
     verification = d[new_user_id]
@@ -71,9 +70,6 @@ def test_modify_an_existing_user_object(connection):
     # Update happened
     assert verification.email == "testuser_changed_email@local.localdom"
     assert len(d) == previous_quantity
-
-
-ConnectionWithTemporaryTestUser = namedtuple("ConnectionWithTemporaryTestUser", "connection, users, user, user_id")
 
 
 @pytest.fixture
@@ -91,8 +87,8 @@ def connection_with_temporary_testuser(connection):
     print("Created new user id", new_user_id, ":", new_user)
 
     # Let the test use the user
+    ConnectionWithTemporaryTestUser = namedtuple("ConnectionWithTemporaryTestUser", "connection, users, user, user_id")
     yield ConnectionWithTemporaryTestUser(connection, d, d[new_user_id], new_user_id)
-
 
     # Cleanup
     del d[new_user_id]
@@ -129,8 +125,26 @@ def test_change_user_password(connection_with_temporary_testuser):
 
     # Retrieve updated object from server
     verification = users[user_id]
-
     assert 'password' not in verification
+
+    # Backup
+    original_auth = connection._authprovider
+
+    # Try to login with the old password, should fail
+    with pytest.raises(Unauthorized):
+        connection._authprovider = Credentials(username=user.username, password="abc!-DEF!-123!", provider=verification.type)
+        current_session = connection.server.current_session
+
+    # Try to login
+    connection._authprovider = Credentials(username=user.username, password="abc!-DEF!-123!CHANGED", provider=verification.type)
+    current_session = connection.server.current_session
+    print("current_session", current_session)
+
+    # Restore
+    connection._authprovider = original_auth
+
+    # Verify that we were logged in as the temporary user
+    assert user_id == current_session['userId']
 
 
 def test_remove_nonexistent(connection):
@@ -171,21 +185,39 @@ def test_cleanup_test_users(connection):
             del d[k]
 
 
+class MissingSentinal(object):
+    pass
+
+
 @pytest.mark.parametrize("email,valid", [
     ("testuser@local.localdom", True),
-    ("", False),
+    ("", True),
     (None, True),
+    (MissingSentinal, True),
     ("testuser_changed_email@local.localdom", True),
     ("a@example.com", True),
-    ("abcd", False),
+    # ("abcd", False),  # This is currently valid, because we're not subclassing fields.Email
 ])
 def test_valid_email_addresses(email, valid):
+
     u = {'user': {'id': '1', 'username': 'a', 'email': email}}
+
+    if email == MissingSentinal:
+        del u['user']['email']
+        email = None
 
     o = User.from_dict(None, None, u, many=False)
 
     print(o)
     assert valid == isinstance(o, User)
+
+    back_to_json = o._serialize()
+    print("back_to_json:", back_to_json)
+
+    assert back_to_json['user']['email'] not in (None, MissingSentinal)
+
+    if email == "":
+        email = None
 
     if valid:
         assert isinstance(o, User)
