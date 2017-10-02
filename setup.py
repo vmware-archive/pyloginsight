@@ -58,6 +58,7 @@ class ToxTest(TestCommand):
         errno = main(args)
         sys.exit(errno)
 
+runtime_requirements = ['requests', 'marshmallow', 'attrdict', 'six']
 
 setup(
     name='pyloginsight',
@@ -65,8 +66,8 @@ setup(
     url='http://github.com/vmware/pyloginsight/',
     license='Apache Software License 2.0',
     author='Alan Castonguay',
-    install_requires=['requests', 'marshmallow', 'attrdict', 'six', 'configparser'],
-    tests_require=["requests_mock", "pytest", "pytest-catchlog", "pytest-flakes", "pytest-pep8"],
+    install_requires=runtime_requirements,
+    tests_require=runtime_requirements + ["requests_mock", "pytest", "pytest-catchlog", "pytest-flakes", "pytest-pep8"],
     description='VMware vRealize Log Insight Client',
     author_email='acastonguay@vmware.com',
     long_description=open('README.rst').read(),

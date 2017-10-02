@@ -87,5 +87,5 @@ class MockedHoststMixin(requests_mock.Adapter):
         if not load_missing_hosts:
             payload = [_ for _ in sort_hosts(self.known_hosts, order=hosts_sort_order)]
             return json.dumps({'count': len(payload), 'from': hosts_from, 'to': hosts_to,
-                               'hosts': payload[hosts_from-1:hosts_to]}
+                               'hosts': payload[hosts_from - 1:hosts_to]}
                               )

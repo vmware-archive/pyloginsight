@@ -8,15 +8,11 @@ from collections import namedtuple
 mockserverlogger = logging.getLogger(__name__)
 
 
-trailing_guid_pattern = re.compile('.*/([a-f0-9-]+)$')
-license_url_matcher = re.compile('/api/v1/licenses/([a-f0-9-]+)$')
-
-
 def uuid_url_matcher(base):
     return re.compile('/api/v1/' + base + '/([a-f0-9-]+)$')
 
 
-User = namedtuple("User", field_names=["username", "password", "provider", "email"])
+User = namedtuple("User", field_names=["username", "password", "type", "email"])
 Session = namedtuple("Session", field_names=["userId", "ttl", "created"])
 
 
@@ -47,7 +43,7 @@ def guid(fn):
     """Server mock; grab the object guid from the url"""
     @wraps(fn)
     def wrapper(self, request, context, *args, **kwargs):
-        guid = uuid_url_matcher('[^/]+').match(request._url_parts.path).group(1)
+        guid = uuid_url_matcher('[^/]+').match(request.path).group(1)
         return fn(self, request=request, context=context, guid=guid, *args, **kwargs)
 
     return wrapper

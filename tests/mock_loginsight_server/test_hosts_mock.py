@@ -37,4 +37,3 @@ def test_sort_hosts():
 
         assert asc_host_chunk[0][0]['lastReceived'] < asc_host_chunk[1][0]['lastReceived']
         assert desc_host_chunk[0][0]['lastReceived'] > desc_host_chunk[1][0]['lastReceived']
-

@@ -19,50 +19,58 @@
 
 from distutils.version import StrictVersion
 import logging
-import collections
-from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, ServerListMixin
-from .abstracts import ServerProperty, RemoteObjectProxy, BaseSchema
-import json
+from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, DirectlyAddressableContainerMapping
+from .abstracts import ServerProperty, RemoteObjectProxy, ObjectSchema, EnvelopeObjectSchema, bind_to_model
 import attrdict
-from marshmallow import Schema, fields
+from marshmallow import fields
 from .exceptions import TransportError
 from datetime import datetime
+import collections
+
 
 logger = logging.getLogger(__name__)
 
 
 class LicenseKey(RemoteObjectProxy, attrdict.AttrDict):
     """A single license key for Log Insight."""
-    class MarshmallowSchema(Schema):
-        id = fields.Str()
-        error = fields.Str(load_only=True)
-        status = fields.Str(load_only=True)
-        configuration = fields.Str(load_only=True)
-        expiration = fields.Str(load_only=True)
-        licenseKey = fields.Str()
-        infinite = fields.Str(load_only=True)
-        count = fields.Integer(load_only=True)
-        typeEnum = fields.Str(load_only=True)
+
+
+@bind_to_model
+class LicenseKeySchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'single': 'licenseKey',
+        'many': 'licenses',
+        'append': lambda x: {'key': x['licenseKey']}  # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
+    }
+    __model__ = LicenseKey
+    id = fields.Str()
+    error = fields.Str(load_only=True)
+    status = fields.Str(load_only=True)
+    configuration = fields.Str(load_only=True)
+    expiration = fields.Raw(load_only=True)
+    licenseKey = fields.Str()
+    infinite = fields.Raw(load_only=True)
+    count = fields.Integer(load_only=True)
+    typeEnum = fields.Str(load_only=True)
 
 
 class LicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/licenses"
     _single = LicenseKey
+    _schema = LicenseKeySchema
     _basekey = "licenses"
-
-    def _createspec(self, value):
-        # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
-        if isinstance(value, LicenseKey):
-            value = value['licenseKey']
-        return {'key': value}
 
 
 class Host(RemoteObjectProxy, attrdict.AttrDict):
     """ A single host returned by Log Insight. """
-    class MarshmallowSchema(Schema):
-        hostname = fields.Str(missing=None)
-        lastReceived = fields.DateTime(attribute='last_received')
-        sourcePath = fields.Str(attribute='source', missing=None)
+
+
+@bind_to_model
+class HostSchema(ObjectSchema):
+    __model__ = Host
+    hostname = fields.Str(missing=None)
+    lastReceived = fields.DateTime(attribute='last_received')
+    sourcePath = fields.Str(attribute='source', missing=None)
 
 
 class Hosts(collections.Sequence, ServerAddressableObject):
@@ -92,7 +100,7 @@ class Hosts(collections.Sequence, ServerAddressableObject):
             last_received_in_seconds = int(host['lastReceived'] / 1000)
             date_format = '%Y-%m-%dT%H:%M:%SZ'
             host['lastReceived'] = datetime.utcfromtimestamp(last_received_in_seconds).strftime(date_format)
-            yield Host().from_dict(connection=self._connection, url=self._baseurl, data=host)
+            yield Host.from_dict(connection=self._connection, url=None, data=host)
 
     def __len__(self):
         total = 0
@@ -144,217 +152,173 @@ class Version(StrictVersion, RemoteObjectProxy):
         """
         return int(self.build_string)
 
-    class MarshmallowSchema(Schema):
-        version = fields.Str()
-        releaseName = fields.Str(attribute="release_name")
 
-    __schema__ = MarshmallowSchema
+@bind_to_model
+class VersionSchema(ObjectSchema):
+    __model__ = Version
+    version = fields.Str()
+    releaseName = fields.Str(attribute="release_name")
 
 
-class Dataset(ServerAddressableObject):
+class Dataset(RemoteObjectProxy, attrdict.AttrDict):
     """
     An object, canonically at /datasets/UUID, which defines a set of rules constraining queries.
 
-    Can self-update on property change, if it has a connection and existing UUID.
+    Can sent itself back to the server, if it has a connection and existing UUID.
     Can be appended to a Datasets collection.
     Can be retrieved from a Datasets collection.
-    """
-
-    id = None
-    name = ""
-    description = ""
-    type = None
-    constraints = None
-
-    def __init__(self, name, description="", id=None, type="OR", constraints=None):
-        self.id = id
-        self.name = name
-        self.description = description
-        self.type = type
-        self.constraints = Dataset.Constraints(constraints) if constraints else Dataset.Constraints()
 
     class Constraints(ServerListMixin):
         pass
 
         class Constraint(ServerAddressableObject):
+
             name = None
             operator = None
             value = None
             fieldType = "STRING"
             hidden = False
+    """
 
 
-class Datasets(collections.MutableMapping):
-
-    def __init__(self, connection):
-        self._connection = connection
-
-    @property
-    def _rootobject(self):
-        return {dataset['id']: dataset for dataset in self._connection.get('/datasets')['dataSets']}
-
-    def __delitem__(self, key):
-        response = self._connection.delete('/datasets/{i}'.format(i=key))
-        if response.ok:
-            pass
-        else:
-            if response.status_code == 400:
-                raise KeyError('The specified data set does not exist.')
-            else:
-                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
-
-    def __getitem__(self, key):
-        return self._rootobject[key]
-
-    def __setitem__(self, key, value):
-        raise NotImplementedError
-
-    def __len__(self):
-        return len(self._rootobject)
-
-    def __iter__(self):
-        return iter(self._rootobject)
-
-    def append(self, name, description, field, value):
-
-        if type(name) == str and type(description) == str and type(field) == str and type(value) == str:
-            pass
-        else:
-            raise TypeError('The name, description, field, and value should be string types.')
-
-        constraints = [{'name': field, 'operator': 'CONTAINS', 'value': value, 'fieldType': 'STRING'}]
-        data = json.dumps({'name': name, 'description': description, 'constraints': constraints})
-        response = self._connection.post('/datasets', data=data)
-
-        if response.ok:
-            return None
-
-        else:
-            if response.status_code == 400:
-                raise TypeError(response.text)
-            else:
-                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+@bind_to_model
+class DatasetSchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'single': 'dataSet',
+        'many': 'dataSets',
+    }
+    __model__ = Dataset
+    id = fields.Str()
+    name = fields.Str()
+    description = fields.Str()
+    type = fields.Str()
+    constraints = fields.List(fields.Dict())
 
 
-_Role = collections.namedtuple('Role', 'name, description, datasets, capabilities, users')
+class Datasets(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
+    _baseurl = "/datasets"
+    _single = Dataset
+    _schema = DatasetSchema
+    _basekey = "dataSets"
+
+    _fetchone = True
 
 
-class Role(_Role):
-    def __new__(cls, name, description="", datasets=[], capabilities=[], users=[]):
-        if not isinstance(datasets, ServerListMixin):
-            datasets = ServerListMixin(datasets)
-        if not isinstance(capabilities, ServerListMixin):
-            capabilities = ServerListMixin(capabilities)
-        if not isinstance(users, ServerListMixin):
-            users = ServerListMixin(users)
+class Group(RemoteObjectProxy, attrdict.AttrDict):
+    """
+    An object, canonically at /groups/UUID, which defines a set of users granted Capabilities or view to Datasets.
+    Compatible with Log Insight 4.5 and earlier. Deprecated - use `Roles` instead.
+    """
 
-        self = super(Role, cls).__new__(cls, name, description, datasets, capabilities, users)
-        return self
+# 2017-07-25 c06fa5f3be67e7981ebdcc7cc094c1c5ace14f00
+# Updated the existing /groups API to /roles API
 
 
-class Roles(collections.MutableMapping):
-    def __init__(self, connection):
-        self._connection = connection
+@bind_to_model
+class GroupSchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'single': 'dataSet',
+        'many': 'dataSets',
+    }
+    __model__ = Dataset
+    id = fields.Str()
+    name = fields.Str()
+    description = fields.Str()
+    type = fields.Str()
+    capabilities = fields.List(fields.Dict())
+    # users?
 
-    @property
-    def _rootobject(self):
-        return {group['id']: group for group in self._connection.get('/groups')['groups']}
 
-    def __delitem__(self, group_id):
-        """ Deletes a role. """
+class Groups(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
+    _baseurl = "/groups"
+    _single = Group
+    _schema = GroupSchema
 
-        response = self._connection.delete('/groups/{i}'.format(i=group_id))
 
-        if response.ok:
-            pass
+class Role(RemoteObjectProxy, attrdict.AttrDict):
+    pass
 
-        else:
-            if response.status_code == 404:
-                raise KeyError('The specified role does not exist.')
-            elif response.status_code == 409:
-                raise KeyError('The specified role is required and cannot be deleted.')
-            else:
-                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
 
-    def __getitem__(self, group_id):
-        """ Gets a role. """
-        return self._rootobject[group_id]
+@bind_to_model
+class RoleSchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'single': 'user',
+        'many': 'users',
+        'append': lambda x: x['user']
+    }
+    __model__ = Role
+    id = fields.Str()
+    username = fields.Str()
+    password = fields.Str(dump_only=True)
+    email = fields.Email(missing=None, required=False)
+    type = fields.Str()
+    apiId = fields.Str()
+    groupIds = fields.List(fields.String())
+    capabilities = fields.List(fields.String())
+    userCapabilities = fields.List(fields.String())
+    userDataSets = fields.List(fields.String())
+    typeEnum = fields.Str()
 
-    def __setitem__(self, group_id, value):
-        raise NotImplementedError
 
-    def __iter__(self):
-        return iter(self._rootobject)
-
-    def __len__(self):
-        return len(self._rootobject)
-
-    def append(self, name, description, capabilities):
-        """ Creates a role. """
-
-        # Ensure we are not getting invalid data types.
-        if not type(name) is str:
-            raise TypeError('The name value must be a string.')
-
-        if not type(description) is str:
-            raise TypeError('The description value must be a string.')
-
-        if not type(capabilities) is list:
-            raise TypeError('The capabilities value must be a list.')
-
-        # Ensure we only use valid capabilities.
-        good_capabilities = ('ANALYTICS', 'DASHBOARDS', 'EDIT_ADMIN', 'EDIT_SHARED', 'INTERNAL', 'INVENTORY',
-                             'STATISTICS', 'VIEW_ADMIN')
-        valid_capabilities = [capability for capability in capabilities if capability in good_capabilities]
-        if not valid_capabilities:
-            raise TypeError('Capabilities must contain at least one valid capability.  Capabilities include: {m}.'.format(m=', '.join(good_capabilities)))
-
-        data = json.dumps({'name': name, 'description': description, 'capabilities': valid_capabilities})
-        response = self._connection.post('/groups', data=data)
-
-        if response.ok:
-            pass
-
-        else:
-            if response.status_code == 409:
-                raise ValueError('A role with the same name value already exists.')
-            else:
-                raise SystemError('Operation failed.  Status: {r.status_code!r}, Error: {r.text!r}'.format(r=response))
+class Roles(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
+    _baseurl = "/roles"
+    _single = Role
+    _schema = RoleSchema
 
 
 class User(RemoteObjectProxy, attrdict.AttrDict):
-    class MarshmallowSchema(BaseSchema):
-        __envelope__ = {
-            'single': 'user',
-            'many': 'users',
-        }
+    def to_server(self, connection, url=None):
+        """
+        The instance validates & serializes itself, then writes back to the server at an existing URL with POST.
+        Alternatively, replace the existing instance in the collection with this instance, `d[k]=instance`.
+        To create a new server-side entity, add this instance to a collection, `d.append(instance)`.
+        """
+        if url is None:
+            url = str(object.__getattribute__(self, "__url"))
+            if url is None:
+                raise AttributeError("Cannot submit object to server without a url")
 
-        id = fields.Str()
-        username = fields.Str()
-        password = fields.Str(dump_only=True)
-        email = fields.Email(missing="", required=True)
-        type = fields.Str()
-        apiId = fields.Str()
-        groupIds = fields.List(fields.String())
-        capabilities = fields.List(fields.String())
-        userCapabilities = fields.List(fields.String())
-        userDataSets = fields.List(fields.String())
-        typeEnum = fields.Str()
-    __schema__ = MarshmallowSchema
+        return connection.post(url, json=self._serialize()['user'])
 
 
-class Users(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
+class NullableStringField(fields.Str):
+    def _serialize(self, value, attr, obj):
+        if value is None:
+            return ''
+        return value
+
+    def _deserialize(self, value, attr, data):
+        if value == '':
+            return None
+        return value
+
+
+@bind_to_model
+class UserSchema(EnvelopeObjectSchema):
+
+    __envelope__ = {
+        'single': 'user',
+        'many': 'users',
+        'append': lambda x: x['user'],
+    }
+    __model__ = User
+    id = fields.Str()
+    username = fields.Str()
+    password = fields.Str(dump_only=True)
+    email = NullableStringField(missing=None, required=False, allow_none=True)  # Can we use fields.Email, but allow zero-length strings (or treat them as None)?
+    type = fields.Str(missing="DEFAULT")
+    apiId = fields.Str()
+    groupIds = fields.List(fields.String())
+    capabilities = fields.List(fields.String())
+    userCapabilities = fields.List(fields.String())
+    userDataSets = fields.List(fields.String())
+    typeEnum = fields.Str()
+
+
+class Users(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
     _baseurl = "/users"
-    _basekey = "users"
     _single = User
-    _fetchone = True
-
-    def keys(self):
-        return [x['id'] for x in self._iterable]
-
-    def _createspec(self, instance):
-        # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
-        return instance
+    _schema = UserSchema
 
 
 class Server(object):
@@ -392,6 +356,10 @@ class Server(object):
     @property
     def license(self):
         return LicenseKeys(self._connection)
+
+    @property
+    def groups(self):
+        return Groups(self._connection)
 
     @property
     def roles(self):

@@ -2,7 +2,7 @@
 
 from marshmallow import Schema, fields
 import json
-from configparser import ConfigParser
+from six.moves import configparser
 import io
 
 
@@ -43,7 +43,7 @@ class AgentConfigString(fields.Field):
     """
 
     def _deserialize(self, value, attr, data):
-        config = ConfigParser()
+        config = configparser.ConfigParser()
         config.read_string(value)
         config_dict = config.__dict__['_sections']
 
@@ -62,7 +62,7 @@ class AgentConfigString(fields.Field):
                 if key == 'tags':
                     config_dict[section_key]['tags'] = json.dumps(value, sort_keys=True)
 
-        config = ConfigParser()
+        config = configparser.ConfigParser()
         config.__dict__['_sections'] = config_dict
         output = io.StringIO()
         config.write(output)
@@ -257,4 +257,3 @@ class PackSchema(BaseContentSchema):
     agentClasses = fields.Nested(AgentClassesSchema, attribute='agent_classes', many=True, required=False)
     aliasFields = fields.Nested(AliasFieldsSchema, attribute='alias_fields', many=True, required=False)
     aliasRules = fields.Nested(AliasRulesSchema, attribute='alias_rules', many=True, required=False)
-

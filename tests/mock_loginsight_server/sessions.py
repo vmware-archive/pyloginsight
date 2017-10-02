@@ -14,7 +14,7 @@ class MockedSessionsMixin(object):
 
         self.sessions_known = RandomDict()
         self.users_known = RandomDict()
-        self.users_known["012345678-9ab-cdef-0123-456789abcdef"] = User('admin', 'VMware123!', 'Local', "admin@local")
+        self.users_known["012345678-9ab-cdef-0123-456789abcdef"] = User('admin', 'VMware123!', 'Local', "admin@example.com")
 
         self.register_uri('POST', '/api/v1/sessions', text=self.session_new, status_code=200)
         self.register_uri('GET', '/api/v1/sessions/current', text=self.session_current, status_code=200)
@@ -23,6 +23,7 @@ class MockedSessionsMixin(object):
         self.register_uri('POST', '/api/v1/users', text=self.callback_user_create, status_code=200)
         self.register_uri('GET', uuid_url_matcher('users'), text=self.callback_user_get, status_code=200)
         self.register_uri('DELETE', uuid_url_matcher('users'), text=self.callback_user_delete, status_code=200)
+        self.register_uri('POST', uuid_url_matcher('users'), text=self.callback_user_update, status_code=200)
 
     @requiresauthentication
     def session_current(self, request, context, session_id, user_id):
@@ -34,7 +35,7 @@ class MockedSessionsMixin(object):
         self.session_timeout()
         attempted_credentials = request.json()
         for k, u in self.users_known.items():
-            if u.username == attempted_credentials['username'] and u.provider == attempted_credentials['provider']:
+            if u.username == attempted_credentials['username'] and u.type == attempted_credentials['provider']:
                 if u.password == attempted_credentials['password']:
                     mockserverlogger.info("Successful authentication as {u.username} = {k}".format(k=k, u=u))
                     context.status_code = 200
@@ -59,7 +60,6 @@ class MockedSessionsMixin(object):
     @requiresauthentication
     def callback_user_list(self, request, context, session_id, user_id):
         r = json.dumps({'users': [dict_with_id(k, self.users_known[k]) for k in self.users_known]})
-        print("callback_user_list", r)
         return r
 
     @requiresauthentication
@@ -67,8 +67,8 @@ class MockedSessionsMixin(object):
         body = request.json()
         assert 'username' in body
         assert 'password' in body
-        if 'provider' not in body:
-            body['provider'] = 'DEFAULT'
+        if 'type' not in body:
+            body['type'] = 'DEFAULT'
         guid = self.users_known.append(User(**body))
 
         r = json.dumps({'user': dict_with_id(guid, self.users_known[guid])})
@@ -94,6 +94,29 @@ class MockedSessionsMixin(object):
             mockserverlogger.info("Attempted to delete nonexistant user {0}".format(guid))
             context.status_code = 404
         return
+
+    @guid
+    @requiresauthentication
+    def callback_user_update(self, request, context, session_id, user_id, guid):
+        body = request.json()
+        if 'type' not in body:
+            body['type'] = 'DEFAULT'
+        existing = self.users_known[guid]
+
+        if 'id' in body:
+            # Cannot re-id an object
+            assert body['id'] == guid
+            del body['id']
+
+        for field in User._fields:
+            if field not in body:
+                body[field] = getattr(existing, field)
+
+        self.users_known[guid] = User(**body)
+
+        r = json.dumps({'user': dict_with_id(guid, self.users_known[guid])})
+        context.status_code = 200
+        return r
 
 
 def dict_with_id(k, v):

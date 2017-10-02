@@ -68,7 +68,6 @@ def test_pack(pack):
     assert stripped_pack_string == stripped_second_pass_string
 
 
-
 def test_query_strings(pack):
     for alert in pack.get('alerts', []):
         for key in ['chartQuery', 'messsageQuery']:

@@ -35,6 +35,7 @@ def test_remove_first_license_and_re_add_it_again(connection):
 
     # Re-add key, will get a new url-fragment guid assigned
     r = licenseobject.append(key)
+    assert isinstance(r, (u"".__class__, "".__class__))
     assert r != guid
 
     # Same quantity now as before
