@@ -17,7 +17,7 @@ print(dir(models))
 
 collection_classes = [cls for cls in
                       [object.__getattribute__(models, classname) for classname in dir(models) if classname[-1] == 's']
-                      if inspect.isclass(cls)]
+                      if inspect.isclass(cls) and issubclass(cls, collections.Mapping)]
 
 
 @pytest.fixture(params=collection_classes)

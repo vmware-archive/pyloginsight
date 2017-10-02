@@ -9,9 +9,12 @@ from .version import MockedVersionMixin
 from .exampleobject import MockedExampleObjectMixin
 from .auth_providers import MockedAuthProvidersMixin
 from .bootstrap import MockedBootstrapMixin
+
+
 from .datasets_mock import MockedDatasetsMixin
 from .groups_mock import MockedGroupsMixin
 from .roles_mock import MockedRolesMixin
+from .hosts import MockedHoststMixin
 
 from pyloginsight.connection import Connection, Credentials
 
@@ -25,7 +28,17 @@ class NotImplementedStubForMockAddress(requests_mock.exceptions.NoMockAddress):
     """register_uri() completed, but implementation is stubbed out."""
 
 
-class LogInsightMockAdapter(MockedExampleObjectMixin, MockedRolesMixin, MockedGroupsMixin, MockedDatasetsMixin, MockedBootstrapMixin, MockedVersionMixin, MockedLicensesMixin, MockedSessionsMixin, MockedAuthProvidersMixin, requests_mock.Adapter):
+class LogInsightMockAdapter(MockedExampleObjectMixin,
+                            MockedRolesMixin,
+                            MockedGroupsMixin,
+                            MockedDatasetsMixin,
+                            MockedBootstrapMixin,
+                            MockedVersionMixin,
+                            MockedLicensesMixin,
+                            MockedSessionsMixin,
+                            MockedAuthProvidersMixin,
+                            MockedHoststMixin,
+                            requests_mock.Adapter):
     def Raise418(self, request, context):
         if RAISE_ON_MISSING_MOCK_IMPLEMENTATION:
             raise NotImplementedStubForMockAddress(request)
