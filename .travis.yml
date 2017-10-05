@@ -36,7 +36,7 @@ after_success:
 before_deploy:
 - git describe
 - echo TRAVIS_TAG $TRAVIS_TAG
-- echo version=\"$TRAVIS_TAG\" > $TRAVIS_BUILD_DIR/loginsightexport/__version__.py
+- echo version=\"$TRAVIS_TAG\" > $TRAVIS_BUILD_DIR/pyloginsight/__version__.py
 deploy:
   provider: pypi
   user: alanjcastonguay
