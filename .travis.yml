@@ -34,7 +34,7 @@ script:
 after_success:
 - coveralls
 before_deploy:
-- git describe
+- git describe --tags
 - echo TRAVIS_TAG $TRAVIS_TAG
 - echo version=\"$TRAVIS_TAG\" > $TRAVIS_BUILD_DIR/pyloginsight/__version__.py
 deploy:
