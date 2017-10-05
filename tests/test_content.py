@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-from pyloginsight.content import PackSchema, QueryStringSchema, ConstraintSchema, ChartOptionsSchema
-from pyloginsight.content import ListDataOptionsSchema
+from pyloginsight.content import PackSchema, QueryStringSchema, ConstraintSchema, ChartOptionsSchema, QueryOptionsSchema
 from glob import glob
 import json
 import os
@@ -141,7 +140,7 @@ def test_list_data_options(pack):
                     for list_data in widget.get('listData', []):
                         try:
                             list_data_option_string = json.loads(list_data.get('options'))
-                            first_pass_deserialize = ListDataOptionsSchema().load(list_data_option_string)
+                            first_pass_deserialize = QueryOptionsSchema().load(list_data_option_string)
                         except TypeError:
                             print('Key is {} and caused TypeError'.format(list_data.get('options')))
                             continue
