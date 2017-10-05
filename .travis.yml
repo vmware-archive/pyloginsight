@@ -29,19 +29,21 @@ install:
 - python setup.py --version
 - python setup.py develop
 script:
-- py.test --flakes --cov=pyloginsight --cov-config=tox.ini
-  --cov-fail-under=60 --cov-report term-missing
+- py.test --flakes --cov=pyloginsight --cov-config=tox.ini --cov-fail-under=60 --cov-report term-missing
 after_success:
 - coveralls
 before_deploy:
-- git describe
+- git describe --tags
 - echo TRAVIS_TAG $TRAVIS_TAG
 - echo version=\"$TRAVIS_TAG\" > $TRAVIS_BUILD_DIR/pyloginsight/__version__.py
+- ls -l $TRAVIS_BUILD_DIR/pyloginsight/
+- cat $TRAVIS_BUILD_DIR/pyloginsight/__version__.py
 deploy:
+  skip_cleanup: true
   provider: pypi
   user: alanjcastonguay
   password:
-    secure: H1pABdQtixeteUJK2o9dn94ZpfA6Tqu2e/N8yHY/YO2Mhu/D4gveR1hyPVVywoXeVsd2tQ02eAwUs/15aroydS5TtGmTwNnEmlHa9C1oFV6JEzZyexu2m3a1o5WXbQu7pgM01klnC7/7dUufFM8OiOZyOoiulU6IJIrqqdpTzISCdkjOBQ7rqZg01IrtQ0bUm05shcm2KW5aOqaZEoRKVcVcNF+jNOmN0pp0N9z8JS8Bv8t1u8jW8Cw8G+QmhF8qaV7G+kh/GVakeXJkz7wAVNIlrKrQVtPJwF1YpmKK7bJga/rDVvB67wkEF42amjMzlBj7R6ymA4YtT+DNe1ATHDt80Uxi7+t5/I6i67k+W1c6aaBdOZjduyD+nRXj76xy24wHYzt1ND5i3m8aFKkTJTrdb8rI06WpkuTENYMbVYMIXu2QKZogQ7ExyRy194kKI8GQp4cdTKUhqYVXFFK6uR4WyrAl3UKIAXfaFatG23LLjEP3rz53bCX3aKS/akKpXPbaTKXE5mw7lAtfIeFe0kggosy8OTp6qix68qlcdL/tid0Sbv/Am+FQyH7teI1yN+A3k6SitNQll7Cywkq+SIyPN8Y0Mptf6h/mUloFMqyvJv37Bn5B8doPi/Y71dwiMA8llKo80x+jHTvo6LHu+gABlVdHDYEonBHS1Qac5RE=
+    secure: uVSLBoAY4Zga5TP4d7WHgbMZSC8YuMyEVgCrWaiTNLTma05sfBSlbajiQ85gxajDTVE0n/3kgQjTICCMXm/zisSmG+R+Ix/41o+MMXZ5fQmBBzyh75Or0ujdhidbIwIYTnV9zt4db4gTtj/PAj9gBnkDxsK5nLG13/5GOXxgm5sejhzIJDUKWfe8q9AcX5wh++DV17j67e9lSI/oTZpYQfdy9WQKLAfz8HVQCWD8a7/EHvhgeodoGBL5PPxdTA0QwGUqKLaiAamsDj/dQ+oEFboDumsHKEZesRFlVW41qf4JVlWnuZPbNctstudTEUIbXfjy2qkPf5iqQZVF7MauEN0F7zo2vZAGlevPtFZ9Fv+zvbOYKfhfvhDEVQtyJ7zONOzTltOphSxcpMXVA8DPSDwkhI4I3ldXKI41g3p8IF45pvMGERPoC9B+RBLgPGE7vw1OpZ3fHl1jX9Nm0hWPYgYA4QnCBRAV6o2QeV5swEIWKKQIQ1kR9IXuEDzbLzL2TbdUEnf1fN6r6yHxbqH/QdMKgQwBmOqPbmYbzeLlyhYW8hkEacAYGttsdw/IksRC0zwEyZLX6QaGDa8I/3HDl4a1F+Y5PtFYdiLoRHOgVmrhFm+kiLdTlY1WTSnKCgEoPM3GuhZCxrtl1ABdQYsR8a2GU5Qs9T1ctpE+FfeMtNs=
   on:
     tags: true
     branch: master
