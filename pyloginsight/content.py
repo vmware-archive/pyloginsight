@@ -246,7 +246,7 @@ class QueryStringSchema(BaseContentSchema):
     startTimeMillis = fields.Int(attribute='start_time_millis', required=True)
     piqlFunctionGroups = fields.Nested(PiqlFunctionGroupsSchema, attribute='piql_function_groups', many=True,
                                        required=False)
-    extractedFields = fields.Nested(ExtractedFieldSchema, many=True, required=True)
+    extractedFields = fields.Nested(ExtractedFieldSchema, attribute='extracted_fields', many=True, required=True)
 
 
 class AlertSchema(BaseContentSchema):
