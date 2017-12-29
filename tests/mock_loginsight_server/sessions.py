@@ -14,7 +14,7 @@ class MockedSessionsMixin(object):
 
         self.sessions_known = RandomDict()
         self.users_known = RandomDict()
-        self.users_known["012345678-9ab-cdef-0123-456789abcdef"] = User('admin', 'VMware123!', 'Local', "admin@example.com")
+        self.users_known["012345678-9ab-cdef-0123-456789abcdef"] = User('admin', 'VMware123!', 'DEFAULT', "admin@example.com")
 
         self.register_uri('POST', '/api/v1/sessions', text=self.session_new, status_code=200)
         self.register_uri('GET', '/api/v1/sessions/current', text=self.session_current, status_code=200)
@@ -34,10 +34,14 @@ class MockedSessionsMixin(object):
         """Attempt to create a new session with provided credentials."""
         self.session_timeout()
         attempted_credentials = request.json()
+
+        # No attempt to mock AD or VIDM yet.
+        attempted_type = {'Local': 'DEFAULT'}[attempted_credentials['provider']]
+
         for k, u in self.users_known.items():
-            if u.username == attempted_credentials['username'] and u.type == attempted_credentials['provider']:
+            if u.username == attempted_credentials['username'] and u.type == attempted_type:
                 if u.password == attempted_credentials['password']:
-                    mockserverlogger.info("Successful authentication as {u.username} = {k}".format(k=k, u=u))
+                    mockserverlogger.info("Successful authentication as {u.username}@{u.type} = {k}".format(k=k, u=u))
                     context.status_code = 200
                     sessionId = self.sessions_known.append(Session(k, 1800, time.time()))
                     return json.dumps({"userId": k, "sessionId": sessionId, "ttl": 1800})

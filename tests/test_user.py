@@ -130,13 +130,16 @@ def test_change_user_password(connection_with_temporary_testuser):
     # Backup
     original_auth = connection._authprovider
 
-    # Try to login with the old password, should fail
+    def type_to_provider(t):
+        return {'DEFAULT': 'Local'}[t]
+
+    logger.info("Try to login with the old password, should fail")
     with pytest.raises(Unauthorized):
-        connection._authprovider = Credentials(username=user.username, password="abc!-DEF!-123!", provider=verification.type)
+        connection._authprovider = Credentials(username=user.username, password="abc!-DEF!-123!", provider=type_to_provider(user.type))
         current_session = connection.server.current_session
 
-    # Try to login
-    connection._authprovider = Credentials(username=user.username, password="abc!-DEF!-123!CHANGED", provider=verification.type)
+    logger.info("Try to login with new credentials")
+    connection._authprovider = Credentials(username=user.username, password="abc!-DEF!-123!CHANGED", provider=type_to_provider(user.type))
     current_session = connection.server.current_session
     print("current_session", current_session)
 
