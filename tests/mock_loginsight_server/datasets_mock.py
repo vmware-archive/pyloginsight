@@ -58,8 +58,7 @@ class MockedDatasetsMixin(requests_mock.Adapter):
     def __add(self, request, context, session_id, user_id):
         body = request.json()
         print("Got blob from client", body)
-        assert 'dataSet' in body
-        newitem = body['dataSet']
+        newitem = body
         assert 'name' in newitem
         assert 'id' not in newitem
 

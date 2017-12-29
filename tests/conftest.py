@@ -36,7 +36,7 @@ ConnectionContainer = namedtuple("Connections", ["clazz", "hostname", "port", "a
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--server", action="store", metavar="SERVER:PORT", default="mockserverlocal:9543",
+        "--server", action="append", metavar="SERVER:PORT", default=[],
         help="Also run tests against https://SERVER:PORT, can be listed multiple times. Mock server @ mockserverlocal:9543")
     parser.addoption(
         "--username", action="store", default="admin",
@@ -67,30 +67,36 @@ def pytest_generate_tests(metafunc):
 
         configs = []
 
-        s = metafunc.config.getoption('server')
-        print("Running tests against server {}".format(s))
+        servers = metafunc.config.getoption('server')
 
-        hostname, port = s.split(":")
+        if servers == []:
+            print("No servers specified.")
+            servers = ["mockserverlocal:9543"]
 
-        # magic hostname
-        if hostname == "mockserverlocal":
-            clazz = MockedConnection
-        else:
-            clazz = Connection
+        for s in servers:
+            print("Running tests against server {}".format(s))
 
-        configs.append(
-            ConnectionContainer(
-                clazz,
-                hostname,
-                int(port),
-                Credentials(
-                    metafunc.config.getoption("username"),
-                    metafunc.config.getoption("password"),
-                    metafunc.config.getoption("provider"),
-                ),
-                False
+            hostname, port = s.split(":")
+
+            # magic hostname
+            if hostname == "mockserverlocal":
+                clazz = MockedConnection
+            else:
+                clazz = Connection
+
+            configs.append(
+                ConnectionContainer(
+                    clazz,
+                    hostname,
+                    int(port),
+                    Credentials(
+                        metafunc.config.getoption("username"),
+                        metafunc.config.getoption("password"),
+                        metafunc.config.getoption("provider"),
+                    ),
+                    False
+                )
             )
-        )
 
         metafunc.parametrize("servers",
                              argvalues=configs,
@@ -129,7 +135,7 @@ def connection(servers, licensekey):
 
 
 # Matrix of bad credentials multipled by server list
-@pytest.fixture(params=[Credentials("fake", "fake", "fake"), None])
+@pytest.fixture(params=[Credentials("fake", "fake", "Local"), None])
 def wrong_credential_connection(servers, request, licensekey):
     """A pyloginsight.connection to a remote server, with non-functional credentials."""
     c = servers._replace(auth=request.param)

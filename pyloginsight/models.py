@@ -40,7 +40,7 @@ class LicenseKeySchema(EnvelopeObjectSchema):
     __envelope__ = {
         'single': 'licenseKey',
         'many': 'licenses',
-        'append': lambda x: {'key': x['licenseKey']}  # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
+        'append': lambda x: {'key': x['licenseKey']['licenseKey']}  # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
     }
     __model__ = LicenseKey
     id = fields.Str()
@@ -59,6 +59,11 @@ class LicenseKeys(AppendableServerDictMixin, ServerDictMixin, ServerAddressableO
     _single = LicenseKey
     _schema = LicenseKeySchema
     _basekey = "licenses"
+
+    def append(self, value):
+        if not isinstance(value, self._single):
+            value = self._single(licenseKey=str(value))
+        return super(LicenseKeys, self).append(value)
 
 
 class Host(RemoteObjectProxy, attrdict.AttrDict):
@@ -186,6 +191,7 @@ class DatasetSchema(EnvelopeObjectSchema):
     __envelope__ = {
         'single': 'dataSet',
         'many': 'dataSets',
+        'append': lambda x: x['dataSet']
     }
     __model__ = Dataset
     id = fields.Str()
@@ -193,6 +199,21 @@ class DatasetSchema(EnvelopeObjectSchema):
     description = fields.Str()
     type = fields.Str()
     constraints = fields.List(fields.Dict())
+
+
+class CapabilityHashOrStringField(fields.String):
+    def _deserialize(self, value, attr, data):
+        if isinstance(value, dict):
+            return super(CapabilityHashOrStringField, self)._serialize(value['id'], attr, data)
+        return super(CapabilityHashOrStringField, self)._serialize(value, attr, data)
+
+
+class NonEmptyList(fields.List):
+    def _serialize(self, value, attr, obj):
+        r = super(NonEmptyList, self)._serialize(value, attr, obj)
+        if len(r) == 0:
+            raise ValueError("List cannot be empty.")
+        return r
 
 
 class Datasets(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
@@ -242,22 +263,19 @@ class Role(RemoteObjectProxy, attrdict.AttrDict):
 @bind_to_model
 class RoleSchema(EnvelopeObjectSchema):
     __envelope__ = {
-        'single': 'user',
-        'many': 'users',
-        'append': lambda x: x['user']
+        'single': 'role',
+        'many': 'roles',
+        'append': lambda x: x['role']
     }
     __model__ = Role
     id = fields.Str()
-    username = fields.Str()
-    password = fields.Str(dump_only=True)
-    email = fields.Email(missing=None, required=False)
-    type = fields.Str()
-    apiId = fields.Str()
-    groupIds = fields.List(fields.String())
-    capabilities = fields.List(fields.String())
-    userCapabilities = fields.List(fields.String())
-    userDataSets = fields.List(fields.String())
-    typeEnum = fields.Str()
+    description = fields.Str(missing="", default="")
+    name = fields.Str()
+    # Capabilities can be a list like ["ANALYTICS", "VIEW_ADMIN"] or a list of hashes like [{'id': 'ANALYTICS'}, {'id': 'VIEW_ADMIN'}]
+
+    # Note, an empty capabilities list doesn't make sense.
+    capabilities = fields.List(CapabilityHashOrStringField(), missing=list, default=list)
+    dataSets = fields.List(CapabilityHashOrStringField(), missing=list, default=list)
 
 
 class Roles(AppendableServerDictMixin, DirectlyAddressableContainerMapping, ServerDictMixin, ServerAddressableObject):
