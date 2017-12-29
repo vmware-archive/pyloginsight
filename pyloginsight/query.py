@@ -19,10 +19,12 @@
 
 # A "Constraint" consists of (field, operator, value).
 
-from . import operators as operator
+from . import operator
 from requests.utils import quote
 import warnings
+from datetime import datetime, timedelta
 from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin
+from .ingestion import datetime_in_milliseconds
 
 
 class Queries(AppendableServerDictMixin, ServerDictMixin, ServerAddressableObject):
@@ -55,6 +57,11 @@ class Constraint:
 
     def __str__(self):
         """Url-encode each of the arguments, and return a query fragment like `/field/operator value`."""
+
+        if isinstance(self.value, datetime):
+            self.value = datetime_in_milliseconds(self.value)
+        if isinstance(self.value, timedelta):
+            self.value = self.value.total_seconds()
         if self.operator in operator._NUMERIC:
             self.value = str(int(self.value))
         if self.operator in operator._TIME and self.field != 'timestamp':

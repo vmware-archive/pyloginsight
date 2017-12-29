@@ -10,7 +10,7 @@ from .exampleobject import MockedExampleObjectMixin
 from .auth_providers import MockedAuthProvidersMixin
 from .bootstrap import MockedBootstrapMixin
 
-
+from .query_and_ingestion import MockedEventDataMixin
 from .datasets_mock import MockedDatasetsMixin
 from .groups_mock import MockedGroupsMixin
 from .roles_mock import MockedRolesMixin
@@ -32,6 +32,7 @@ class LogInsightMockAdapter(MockedExampleObjectMixin,
                             MockedRolesMixin,
                             MockedGroupsMixin,
                             MockedDatasetsMixin,
+                            MockedEventDataMixin,
                             MockedBootstrapMixin,
                             MockedVersionMixin,
                             MockedLicensesMixin,

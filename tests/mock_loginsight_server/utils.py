@@ -43,7 +43,7 @@ def guid(fn):
     """Server mock; grab the object guid from the url"""
     @wraps(fn)
     def wrapper(self, request, context, *args, **kwargs):
-        guid = uuid_url_matcher('[^/]+').match(request.path).group(1)
+        guid = uuid_url_matcher('.+').match(request.path).group(1)
         return fn(self, request=request, context=context, guid=guid, *args, **kwargs)
 
     return wrapper

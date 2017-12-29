@@ -9,6 +9,7 @@ python:
 - 3.7-dev
 - nightly
 - pypy
+- pypy3
 matrix:
   fast_finish: true
   allow_failures:
@@ -16,6 +17,7 @@ matrix:
   - python: 3.7-dev
   - python: nightly
   - python: pypy
+  - python: pypy3
 install:
 - pip install --upgrade pip
 - pip install pep8==1.7.0
