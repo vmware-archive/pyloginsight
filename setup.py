@@ -58,7 +58,7 @@ class ToxTest(TestCommand):
         errno = main(args)
         sys.exit(errno)
 
-runtime_requirements = ['requests', 'marshmallow', 'attrdict', 'six']
+runtime_requirements = ['requests', 'marshmallow', 'attrdict', 'six', 'pytz']
 
 setup(
     name='pyloginsight',

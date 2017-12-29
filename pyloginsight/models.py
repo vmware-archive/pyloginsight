@@ -25,10 +25,45 @@ import attrdict
 from marshmallow import fields
 from .exceptions import TransportError
 from datetime import datetime
+import pytz
+
 import collections
 
 
 logger = logging.getLogger(__name__)
+
+
+class FieldsListOfDictsToDictField(fields.Field):
+    def _deserialize(self, value, attr, data):
+        assert isinstance(value, list)
+        return dict([(i['name'], i['content']) for i in value])
+
+
+class UnixTimestampToDatetimeField(fields.Field):
+    def _deserialize(self, value, attr, data):
+        d = int(value) / 1000.0
+        return datetime.fromtimestamp(d, tz=pytz.utc)
+
+
+class Event(RemoteObjectProxy, attrdict.AttrDict):
+    """A single license key for Log Insight."""
+
+
+@bind_to_model
+class EventSchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'many': 'events',
+    }
+    __model__ = Event
+    text = fields.Str(missing="")
+    timestamp = UnixTimestampToDatetimeField(missing=0)
+    fields = FieldsListOfDictsToDictField(missing=[])
+
+
+class Events(ServerAddressableObject):
+    _baseurl = "/events"
+    _single = Event
+    _schema = EventSchema
 
 
 class LicenseKey(RemoteObjectProxy, attrdict.AttrDict):
@@ -40,7 +75,8 @@ class LicenseKeySchema(EnvelopeObjectSchema):
     __envelope__ = {
         'single': 'licenseKey',
         'many': 'licenses',
-        'append': lambda x: {'key': x['licenseKey']['licenseKey']}  # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
+        # When creating a new instance, the server expects an hashmap with the name "key" instead of "licenseKey"
+        'append': lambda x: {'key': x['licenseKey']['licenseKey']}
     }
     __model__ = LicenseKey
     id = fields.Str()
@@ -209,7 +245,7 @@ class CapabilityHashOrStringField(fields.String):
 
 
 class NonEmptyList(fields.List):
-    def _serialize(self, value, attr, obj):
+    def _deserialize(self, value, attr, obj):
         r = super(NonEmptyList, self)._serialize(value, attr, obj)
         if len(r) == 0:
             raise ValueError("List cannot be empty.")
@@ -323,7 +359,8 @@ class UserSchema(EnvelopeObjectSchema):
     id = fields.Str()
     username = fields.Str()
     password = fields.Str(dump_only=True)
-    email = NullableStringField(missing=None, required=False, allow_none=True)  # Can we use fields.Email, but allow zero-length strings (or treat them as None)?
+    # TODO: Can we subclass fields.Email, but allow zero-length strings (or treat them as None)?
+    email = NullableStringField(missing=None, required=False, allow_none=True)
     type = fields.Str(missing="DEFAULT")
     apiId = fields.Str()
     groupIds = fields.List(fields.String())
@@ -392,3 +429,15 @@ class Server(object):
         return Hosts(self._connection)
 
     # TODO: Model the server features as properties
+
+    def events(self, constraints=(), parameters=None):
+        url = "".join([str(c) for c in constraints])
+        result = self._connection.get("/events" + url, params=parameters or {})
+        ser = EventSchema()
+        parse = ser.load(result, many=True, partial=False)
+        return parse.data
+
+    def log(self, event):
+        from .ingestion import transmit
+
+        return transmit(self._connection, event)

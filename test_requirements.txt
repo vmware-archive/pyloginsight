@@ -4,3 +4,8 @@ six
 marshmallow
 attrdict
 pytz
+requests_mock
+pytest
+pytest-catchlog
+pytest-flakes
+pytest-pep8
