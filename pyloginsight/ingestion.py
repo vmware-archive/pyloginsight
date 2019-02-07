@@ -16,10 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import logging
-import pytz
+import re
 from datetime import datetime
+
+import pytz
+
 from .exceptions import ServerError
 
 logger = logging.getLogger(__name__)
@@ -79,12 +81,13 @@ def serialize_event_object(event_object):
     return serialize_cfapi_event(event_object.get('text', None), ms, event_object.get('fields', None))
 
 
-def transmit(connection, event_object, agent_id="1", trusted=False):
+def transmit(connection, event_objects, agent_id="1", trusted=False):
     """Transmit a single Event object to a remote Log Insight server."""
+    evts = list()
+    for event_object in event_objects:
+        evts.append(serialize_event_object(event_object))
 
-    e = serialize_event_object(event_object)
-
-    r = connection.post("/events/ingest/" + agent_id, json={"events": [e]}, sendauthorization=trusted)
+    r = connection.post("/events/ingest/" + agent_id, json={"events": evts}, sendauthorization=trusted)
 
     if r.get("status", None) == 'ok':
         return r.get("ingested", 0)

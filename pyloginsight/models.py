@@ -17,18 +17,18 @@
 # limitations under the License.
 
 
-from distutils.version import StrictVersion
+import collections
 import logging
+from datetime import datetime
+from distutils.version import StrictVersion
+
+import attrdict
+import pytz
+from marshmallow import fields
+
 from .abstracts import ServerAddressableObject, AppendableServerDictMixin, ServerDictMixin, DirectlyAddressableContainerMapping
 from .abstracts import ServerProperty, RemoteObjectProxy, ObjectSchema, EnvelopeObjectSchema, bind_to_model
-import attrdict
-from marshmallow import fields
 from .exceptions import TransportError
-from datetime import datetime
-import pytz
-
-import collections
-
 
 logger = logging.getLogger(__name__)
 
@@ -157,13 +157,13 @@ class Hosts(collections.Sequence, ServerAddressableObject):
         return self.__iter__(sort_order='asc')
 
     # The __contains__ method was not implemented because host objects on Log Insight do not have an ID. Although the
-        # API does accept a searchTerm parameter that could be used to identify hosts by their FQDN or IP, the API will
-        # return partial matches. It may be possible for the library to use the hostname or sourcePath properties
-        # as identifiers, but then the Hosts and Host class would need to be re-implemented as RemoteObjectProxy type
-        # sub-class.
-        #
-        # Tests using __contains__ will still work. See
-        # https://docs.python.org/3.6/reference/datamodel.html#object.__contains__
+    # API does accept a searchTerm parameter that could be used to identify hosts by their FQDN or IP, the API will
+    # return partial matches. It may be possible for the library to use the hostname or sourcePath properties
+    # as identifiers, but then the Hosts and Host class would need to be re-implemented as RemoteObjectProxy type
+    # sub-class.
+    #
+    # Tests using __contains__ will still work. See
+    # https://docs.python.org/3.6/reference/datamodel.html#object.__contains__
 
 
 class Version(StrictVersion, RemoteObjectProxy):
@@ -267,6 +267,7 @@ class Group(RemoteObjectProxy, attrdict.AttrDict):
     Compatible with Log Insight 4.5 and earlier. Deprecated - use `Roles` instead.
     """
 
+
 # 2017-07-25 c06fa5f3be67e7981ebdcc7cc094c1c5ace14f00
 # Updated the existing /groups API to /roles API
 
@@ -349,7 +350,6 @@ class NullableStringField(fields.Str):
 
 @bind_to_model
 class UserSchema(EnvelopeObjectSchema):
-
     __envelope__ = {
         'single': 'user',
         'many': 'users',
@@ -437,7 +437,8 @@ class Server(object):
         parse = ser.load(result, many=True, partial=False)
         return parse.data
 
-    def log(self, event):
+    def log(self, events):
         from .ingestion import transmit
-
-        return transmit(self._connection, event)
+        if not isinstance(events, list):
+            events = [events, ]
+        return transmit(self._connection, events)
