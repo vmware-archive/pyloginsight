@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-import pytest
-import warnings
-import collections
-import uuid
 
-from pyloginsight.exceptions import TransportError
-from pyloginsight.query import Constraint, Parameter
-from pyloginsight import operator
-from pyloginsight.models import Event
-from pyloginsight.ingestion import serialize_event_object, crush_invalid_field_name
-from datetime import datetime
-import pytz
-import time
+import collections
 import json
+import time
+import uuid
+import warnings
+from datetime import datetime
+
+import pytest
+import pytz
+
+from pyloginsight import operator
+from pyloginsight.exceptions import TransportError
+from pyloginsight.ingestion import serialize_event_object, crush_invalid_field_name
+from pyloginsight.models import Event
+from pyloginsight.query import Constraint, Parameter
 
 """Examples from "Specifying constraints" section of https://vmw-loginsight.github.io/#Querying-data"""
 
@@ -132,6 +134,22 @@ def test_ingest_single_message(connection):
     )
 
     connection.server.log(e)
+
+
+def test_ingest_multiple_message(connection):
+    """
+    Create and ingest a new log message with text=uuid and the current datetime.
+    If the server rejects the event or cannot parse it, this raises an exception.
+    """
+    evts = list()
+    for _ in range(10):
+        evts.append(Event(
+            text=str(uuid.uuid4()),
+            fields={'appname': 'pyloginsight test'},
+            timestamp=datetime.now(pytz.utc)
+        ))
+
+    connection.server.log(evts)
 
 
 def test_ingest_single_empty_message(connection):
