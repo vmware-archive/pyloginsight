@@ -36,7 +36,15 @@ logger = logging.getLogger(__name__)
 class FieldsListOfDictsToDictField(fields.Field):
     def _deserialize(self, value, attr, data):
         assert isinstance(value, list)
-        return dict([(i['name'], i['content']) for i in value if 'content' in i])
+
+        dict_fields = {}
+        for item in value:
+            if 'content' in item:
+                dict_fields[item['name']] = item['content']
+            elif 'startPosition' in item:
+                dict_fields[item['name']] = data['text'][item['startPosition']:item['startPosition'] + item['length']]
+
+        return dict_fields
 
 
 class UnixTimestampToDatetimeField(fields.Field):
