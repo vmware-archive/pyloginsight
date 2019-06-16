@@ -36,7 +36,15 @@ logger = logging.getLogger(__name__)
 class FieldsListOfDictsToDictField(fields.Field):
     def _deserialize(self, value, attr, data):
         assert isinstance(value, list)
-        return dict([(i['name'], i['content']) for i in value])
+
+        dict_fields = {}
+        for item in value:
+            if 'content' in item:
+                dict_fields[item['name']] = item['content']
+            elif 'startPosition' in item:
+                dict_fields[item['name']] = data['text'][item['startPosition']:item['startPosition'] + item['length']]
+
+        return dict_fields
 
 
 class UnixTimestampToDatetimeField(fields.Field):
@@ -46,7 +54,7 @@ class UnixTimestampToDatetimeField(fields.Field):
 
 
 class Event(RemoteObjectProxy, attrdict.AttrDict):
-    """A single license key for Log Insight."""
+    """An event from Log Insight."""
 
 
 @bind_to_model
@@ -64,6 +72,27 @@ class Events(ServerAddressableObject):
     _baseurl = "/events"
     _single = Event
     _schema = EventSchema
+
+
+class AggregatedEventsGroup(RemoteObjectProxy, attrdict.AttrDict):
+    """An aggregated group of events from Log Insight"""
+
+
+@bind_to_model
+class AggregatedEventsGroupSchema(EnvelopeObjectSchema):
+    __envelope__ = {
+        'many': 'bins'
+    }
+    __model__ = AggregatedEventsGroup
+    minTimestamp = UnixTimestampToDatetimeField(missing=0)
+    maxTimestamp = UnixTimestampToDatetimeField(missing=0)
+    value = fields.Int()
+
+
+class AggregatedEventsGroups(ServerAddressableObject):
+    _baseurl = '/aggregated-events'
+    _single = AggregatedEventsGroup
+    _schema = AggregatedEventsGroupSchema
 
 
 class LicenseKey(RemoteObjectProxy, attrdict.AttrDict):
@@ -441,3 +470,10 @@ class Server(object):
         from .ingestion import transmit
 
         return transmit(self._connection, event)
+
+    def aggregated_events(self, constraints=(), parameters=None):
+        url = "".join([str(c) for c in constraints])
+        result = self._connection.get("/aggregated-events" + url, params=parameters or {})
+        ser = AggregatedEventsGroupSchema()
+        parse = ser.load(result, many=True, partial=False)
+        return parse.data
